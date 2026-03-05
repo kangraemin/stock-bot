@@ -12,7 +12,7 @@
       "name": "전략 확장 + reason 인프라",
       "folder": "phase-1",
       "steps": {
-        "1": { "name": "전략 시그널 확장 (base.py, bb_rsi_ema.py)", "status": "pending" },
+        "1": { "name": "전략 시그널 확장 (base.py, bb_rsi_ema.py)", "status": "test_defined" },
         "2": { "name": "reason 전달 경로 (portfolio.py, engine.py)", "status": "pending" },
         "3": { "name": "Phase 1 테스트", "status": "pending" }
       }

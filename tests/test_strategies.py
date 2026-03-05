@@ -206,3 +206,113 @@ def test_bb_rsi_ema_buy_condition():
     # 어떤 시그널이든 생성되었는지 (최소 HOLD 외 시그널 존재)
     # 구체적 BUY/SELL 발생은 데이터 의존적이므로 에러 없이 완료됨을 검증
     assert len(signals) == n
+
+
+# ══════════════════════════════════════════════
+# Phase 1 Step 1: 전략 시그널 확장 TC
+# ══════════════════════════════════════════════
+
+
+# ── P1S1 TC-1: generate_signals_with_reasons 기본 구현 ──
+def test_generate_signals_with_reasons_default(ohlcv_df):
+    """Strategy 기본 구현: generate_signals() 결과 + 빈 reason"""
+    s = DummyStrategy()
+    signals, reasons = s.generate_signals_with_reasons(ohlcv_df)
+    assert isinstance(signals, pd.Series)
+    assert isinstance(reasons, pd.Series)
+    assert len(signals) == len(ohlcv_df)
+    assert len(reasons) == len(ohlcv_df)
+    # 기본 구현은 빈 문자열 reason
+    assert (reasons == "").all()
+
+
+# ── P1S1 TC-2: BbRsiEma 커스텀 RSI 임계값 ──
+def test_bb_rsi_ema_custom_rsi_thresholds(ohlcv_df):
+    """rsi_buy_threshold, rsi_sell_threshold 파라미터 작동"""
+    s_default = BbRsiEma()
+    s_tight = BbRsiEma(rsi_buy_threshold=20, rsi_sell_threshold=80)
+
+    signals_default = s_default.generate_signals(ohlcv_df)
+    signals_tight = s_tight.generate_signals(ohlcv_df)
+
+    # 더 엄격한 임계값 → BUY/SELL 시그널 수가 같거나 적어야 함
+    buy_default = (signals_default == Signal.BUY).sum()
+    buy_tight = (signals_tight == Signal.BUY).sum()
+    assert buy_tight <= buy_default
+
+
+# ── P1S1 TC-3: EMA 필터 ──
+def test_bb_rsi_ema_ema_filter(ohlcv_df):
+    """ema_filter=True 시 BUY 시그널 제한"""
+    s_no_filter = BbRsiEma(ema_filter=False)
+    s_with_filter = BbRsiEma(ema_filter=True)
+
+    buy_no = (s_no_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    buy_yes = (s_with_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    assert buy_yes <= buy_no
+
+
+# ── P1S1 TC-4: MACD 필터 ──
+def test_bb_rsi_ema_macd_filter(ohlcv_df):
+    """macd_filter=True 시 BUY 시그널 제한"""
+    s_no_filter = BbRsiEma(macd_filter=False)
+    s_with_filter = BbRsiEma(macd_filter=True)
+
+    buy_no = (s_no_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    buy_yes = (s_with_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    assert buy_yes <= buy_no
+
+
+# ── P1S1 TC-5: Volume 필터 ──
+def test_bb_rsi_ema_volume_filter(ohlcv_df):
+    """volume_filter=True 시 BUY 시그널 제한"""
+    s_no_filter = BbRsiEma(volume_filter=False)
+    s_with_filter = BbRsiEma(volume_filter=True)
+
+    buy_no = (s_no_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    buy_yes = (s_with_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    assert buy_yes <= buy_no
+
+
+# ── P1S1 TC-6: ADX 필터 ──
+def test_bb_rsi_ema_adx_filter(ohlcv_df):
+    """adx_filter=True 시 BUY 시그널 제한"""
+    s_no_filter = BbRsiEma(adx_filter=False)
+    s_with_filter = BbRsiEma(adx_filter=True)
+
+    buy_no = (s_no_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    buy_yes = (s_with_filter.generate_signals(ohlcv_df) == Signal.BUY).sum()
+    assert buy_yes <= buy_no
+
+
+# ── P1S1 TC-7: params에 새 필드 포함 ──
+def test_bb_rsi_ema_params_includes_new_fields():
+    """params 프로퍼티에 새로운 파라미터들이 포함"""
+    s = BbRsiEma()
+    p = s.params
+    assert "rsi_buy_threshold" in p
+    assert "rsi_sell_threshold" in p
+    assert "ema_filter" in p
+    assert "macd_filter" in p
+    assert "volume_filter" in p
+    assert "adx_filter" in p
+    # 기본값 확인
+    assert p["rsi_buy_threshold"] == 35
+    assert p["rsi_sell_threshold"] == 65
+    assert p["ema_filter"] is False
+    assert p["macd_filter"] is False
+    assert p["volume_filter"] is False
+    assert p["adx_filter"] is False
+
+
+# ── P1S1 TC-8: generate_signals_with_reasons reason 반환 ──
+def test_bb_rsi_ema_with_reasons_returns_reasons(ohlcv_df):
+    """BbRsiEma.generate_signals_with_reasons()가 BUY/SELL에 대해 비어있지 않은 reason 반환"""
+    s = BbRsiEma()
+    signals, reasons = s.generate_signals_with_reasons(ohlcv_df)
+    assert isinstance(signals, pd.Series)
+    assert isinstance(reasons, pd.Series)
+    # BUY 또는 SELL 시그널이 있는 위치에서 reason이 비어있지 않아야 함
+    non_hold = signals != Signal.HOLD
+    if non_hold.any():
+        assert (reasons[non_hold] != "").all()
