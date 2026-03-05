@@ -79,3 +79,101 @@ def test_top_n(price_df):
     grid = {"bb_window": [15, 20, 25], "bb_std": [2.0], "rsi_window": [14], "ema_window": [50]}
     results = run_grid_search(price_df, grid=grid, top_n=2)
     assert len(results) == 2
+
+
+# ── Phase 2 Step 2: Grid Search 확장 ──
+
+SMALL_FULL_GRID = {
+    "bb_window": [20, 25],
+    "bb_std": [2.0, 2.5],
+    "rsi_window": [14, 21],
+    "ema_window": [50, 100],
+    "rsi_buy_threshold": [30, 35],
+    "rsi_sell_threshold": [65, 70],
+    "ema_filter": [False, True],
+    "macd_filter": [False, True],
+    "volume_filter": [False, True],
+    "adx_filter": [False, True],
+}
+
+
+# ── TC-7: DEFAULT_GRID 10개 파라미터 키 ──
+def test_default_grid_has_10_params():
+    assert len(DEFAULT_GRID) == 10
+
+
+# ── TC-8: DEFAULT_GRID 조합 수 49,152 ──
+def test_default_grid_combo_count_49152():
+    combos = generate_param_combos()
+    assert len(combos) == 49_152
+
+
+# ── TC-9: generate_param_combos에 새 파라미터 포함 ──
+def test_param_combos_include_new_params():
+    combos = generate_param_combos()
+    new_params = {"rsi_buy_threshold", "rsi_sell_threshold", "ema_filter",
+                  "macd_filter", "volume_filter", "adx_filter"}
+    for key in new_params:
+        assert key in combos[0], f"Missing param: {key}"
+
+
+# ── TC-10: run_full_grid_search 반환 구조 ──
+def test_full_grid_search_return_structure(price_df):
+    assert run_full_grid_search is not None, "run_full_grid_search not implemented"
+    data = {"SPY": price_df}
+    result = run_full_grid_search(data, grid=SMALL_FULL_GRID, top_n=2)
+    assert isinstance(result, dict)
+    assert "SPY" in result
+    spy = result["SPY"]
+    assert isinstance(spy, dict)
+    first_tf = next(iter(spy.values()))
+    assert isinstance(first_tf, dict)
+    first_period = next(iter(first_tf.values()))
+    assert isinstance(first_period, dict)
+    first_fee = next(iter(first_period.values()))
+    assert isinstance(first_fee, list)
+
+
+# ── TC-11: run_full_grid_search 다중 심볼 ──
+def test_full_grid_search_multi_symbol(price_df):
+    assert run_full_grid_search is not None, "run_full_grid_search not implemented"
+    data = {"SPY": price_df, "QQQ": price_df}
+    result = run_full_grid_search(data, grid=SMALL_FULL_GRID, top_n=2)
+    assert "SPY" in result
+    assert "QQQ" in result
+
+
+# ── TC-12: run_full_grid_search top_n 제한 ──
+def test_full_grid_search_top_n(price_df):
+    assert run_full_grid_search is not None, "run_full_grid_search not implemented"
+    data = {"SPY": price_df}
+    result = run_full_grid_search(data, grid=SMALL_FULL_GRID, top_n=2)
+    for symbol, timeframes in result.items():
+        for tf, periods in timeframes.items():
+            for period, fees in periods.items():
+                for fee_label, results_list in fees.items():
+                    assert len(results_list) <= 2
+
+
+# ── TC-13: run_full_grid_search fee_rates ──
+def test_full_grid_search_fee_rates(price_df):
+    assert run_full_grid_search is not None, "run_full_grid_search not implemented"
+    data = {"SPY": price_df}
+    result = run_full_grid_search(
+        data, grid=SMALL_FULL_GRID, top_n=2,
+        fee_rates=[0.0025, 0.0009],
+    )
+    spy = result["SPY"]
+    first_tf = next(iter(spy.values()))
+    first_period = next(iter(first_tf.values()))
+    assert len(first_period) == 2  # two fee rate keys
+
+
+# ── TC-14: run_full_grid_search timeframes (daily/weekly) ──
+def test_full_grid_search_timeframes(price_df):
+    assert run_full_grid_search is not None, "run_full_grid_search not implemented"
+    data = {"SPY": price_df}
+    result = run_full_grid_search(data, grid=SMALL_FULL_GRID, top_n=2)
+    spy = result["SPY"]
+    assert "daily" in spy
+    assert "weekly" in spy
