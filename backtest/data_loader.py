@@ -32,6 +32,18 @@ def load_single(
     return df
 
 
+def resample_to_weekly(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    return df.resample("W").agg({
+        "open": "first",
+        "high": "max",
+        "low": "min",
+        "close": "last",
+        "volume": "sum",
+    }).dropna()
+
+
 def load_multi(
     symbols: list[str],
     data_dir: pathlib.Path = DATA_DIR,
