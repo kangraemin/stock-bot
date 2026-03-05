@@ -11,3 +11,7 @@
 
 | TC | 설명 | 검증 |
 |----|------|------|
+| TC-1 | 전체 pytest 통과 | pytest tests/ 전체 pass |
+| TC-2 | 모듈 import 검증 | 모든 backtest 모듈 import 성공 |
+| TC-3 | 엔드투엔드 단일 종목 | load → strategy → backtest → metrics → report |
+| TC-4 | 엔드투엔드 포트폴리오 | load_multi → portfolio_backtest → metrics |

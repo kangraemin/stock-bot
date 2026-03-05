@@ -5,7 +5,7 @@
   },
   "plan_approved": true,
   "team_name": "dev-stock-bot-backtest",
-  "current_dev_phase": 5,
+  "current_dev_phase": 6,
   "current_step": 1,
   "dev_phases": {
     "1": {
@@ -36,13 +36,13 @@
       "name": "리포트 + CLI",
       "folder": "phase-5-report-cli",
       "steps": 2,
-      "status": "in_progress"
+      "status": "completed"
     },
     "6": {
       "name": "통합 테스트",
       "folder": "phase-6-integration",
       "steps": 1,
-      "status": "pending"
+      "status": "in_progress"
     }
   },
   "verification": {

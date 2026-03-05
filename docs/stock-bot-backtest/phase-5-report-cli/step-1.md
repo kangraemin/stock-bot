@@ -16,3 +16,6 @@
 | TC-4 | print_grid_results 출력 | top_n 결과 출력 |
 | TC-5 | generate_html_report | HTML 문자열 반환 |
 | TC-6 | HTML에 거래 횟수 포함 | total_trades 텍스트 포함 |
+
+## 결과 ✅
+- 6/6 TC 통과 (pytest)
