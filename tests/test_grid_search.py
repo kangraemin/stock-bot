@@ -1,10 +1,15 @@
-"""Phase 4 Step 3: grid_search.py TC"""
+"""grid_search.py TC"""
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from backtest.grid_search import generate_param_combos, run_grid_search
+from backtest.grid_search import DEFAULT_GRID, generate_param_combos, run_grid_search
+
+try:
+    from backtest.grid_search import run_full_grid_search
+except ImportError:
+    run_full_grid_search = None
 
 
 @pytest.fixture()

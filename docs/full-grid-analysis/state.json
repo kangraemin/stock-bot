@@ -37,7 +37,8 @@
         },
         "2": {
           "name": "Grid Search 확장 + 병렬화",
-          "status": "pending"
+          "status": "test_defined",
+          "test_defined": true
         },
         "3": {
           "name": "Phase 2 테스트",
