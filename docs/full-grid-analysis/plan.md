@@ -1,23 +1,23 @@
-# `--run-all` 전 종목 종합 분석 + 상위 결과 HTML 보고서
+# 전 종목 Grid Search + HTML 보고서
 
 ## Context
-13종목 전체 그리드서치 + 프리셋 시나리오 + 단일 vs 혼합.
-전부 돌린 후 가장 좋은 결과들만 뽑아서 HTML 보고서(차트 포함).
+13종목 전체 grid search(49,152 파라미터 조합) → 종목별 Top 5 → Plotly 인터랙티브 HTML 보고서.
 
-## Phase 1: 매매 이유 인프라 (1 step)
-- strategies/base.py: generate_signals → (signals, reasons) 튜플
-- bb_rsi_ema.py: reason 생성
-- portfolio.py: buy/sell에 reason
-- engine.py: trade_log에 reason
+## Grid: 49,152 조합 × 2수수료 × 2시간대 × 3기간 × 13종목 = ~7.7M회
 
-## Phase 2: full_analysis + runner (1 step)
-- full_analysis.py: 종목별 그리드서치 + 프리셋 + 단일vs혼합 (기간별)
-- top_picks: Sharpe 상위 N개 선별
-- runner.py: --run-all, --fast-grid, --periods, --top-picks
+**파라미터:** bb_window[4] × bb_std[4] × rsi_window[3] × ema_window[4] × rsi_buy[4] × rsi_sell[4] × ema_filter[2] × macd_filter[2] × volume_filter[2] × adx_filter[2]
 
-## Phase 3: HTML 차트 보고서 (1 step)
-- charts.py: Plotly 차트 (매매 마커 + hover 이유 + rangeselector)
-- report.py: top picks만 차트 포함 HTML 생성
+## Phase 1: 전략 확장 + reason 인프라
+- bb_rsi_ema.py: RSI 임계값 파라미터화 + EMA/MACD/Volume/ADX 필터 on/off + reason
+- base.py: generate_signals_with_reasons()
+- portfolio.py/engine.py: reason 전달 경로
 
-## Phase 4: 테스트 (1 step)
-- test_full_analysis.py (8 TC), test_charts.py (4 TC)
+## Phase 2: 전 종목 Grid Search + 병렬화
+- grid_search.py: run_full_grid_search() + ProcessPoolExecutor
+- data_loader.py: resample_to_weekly()
+
+## Phase 3: Plotly HTML 보고서
+- report_html.py (신규): 차트 + 마커 + hover reason + B&H + 프리셋 비교
+
+## Phase 4: CLI 통합
+- runner.py: --full-report
