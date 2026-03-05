@@ -8,6 +8,13 @@ import pytest
 
 from backtest.data_loader import load_multi, load_single
 
+try:
+    from backtest.data_loader import resample_to_weekly
+except ImportError:
+
+    def resample_to_weekly(*args, **kwargs):
+        raise NotImplementedError("resample_to_weekly not implemented yet")
+
 
 @pytest.fixture()
 def sample_parquet(tmp_path):
@@ -111,3 +118,84 @@ def test_load_multi_date_filter(sample_parquet):
         df = result[sym]
         assert df.index.min() >= pd.Timestamp("2023-02-01")
         assert df.index.max() <= pd.Timestamp("2023-03-01")
+
+
+# ── Phase 2 Step 1: resample_to_weekly TC ──
+
+
+@pytest.fixture()
+def daily_df():
+    """3주 분량 일봉 데이터 (15 영업일)"""
+    dates = pd.date_range("2023-01-02", periods=15, freq="B")
+    return pd.DataFrame(
+        {
+            "open": [100 + i for i in range(15)],
+            "high": [110 + i for i in range(15)],
+            "low": [90 + i for i in range(15)],
+            "close": [105 + i for i in range(15)],
+            "volume": [1000 * (i + 1) for i in range(15)],
+        },
+        index=dates,
+    )
+
+
+# TC-1: OHLCV 집계 규칙
+def test_resample_weekly_ohlcv_aggregation(daily_df):
+    weekly = resample_to_weekly(daily_df)
+    # 첫 번째 주 (2023-01-02 ~ 2023-01-06, 5일)
+    first_week = weekly.iloc[0]
+    first_5 = daily_df.iloc[:5]
+    assert first_week["open"] == first_5["open"].iloc[0]
+    assert first_week["high"] == first_5["high"].max()
+    assert first_week["low"] == first_5["low"].min()
+    assert first_week["close"] == first_5["close"].iloc[-1]
+    assert first_week["volume"] == first_5["volume"].sum()
+
+
+# TC-2: DatetimeIndex 보존
+def test_resample_weekly_datetime_index(daily_df):
+    weekly = resample_to_weekly(daily_df)
+    assert isinstance(weekly.index, pd.DatetimeIndex)
+
+
+# TC-3: 컬럼명 보존
+def test_resample_weekly_columns_preserved(daily_df):
+    weekly = resample_to_weekly(daily_df)
+    for col in ("open", "high", "low", "close", "volume"):
+        assert col in weekly.columns
+
+
+# TC-4: 주봉 행 수 < 일봉 행 수
+def test_resample_weekly_row_count(daily_df):
+    weekly = resample_to_weekly(daily_df)
+    assert len(weekly) < len(daily_df)
+    assert len(weekly) == 3  # 3주
+
+
+# TC-5: 빈 DataFrame 입력
+def test_resample_weekly_empty():
+    empty = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
+    empty.index = pd.DatetimeIndex([], name="Date")
+    result = resample_to_weekly(empty)
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 0
+
+
+# TC-6: partial week 처리
+def test_resample_weekly_partial_week():
+    # 수요일부터 시작 → 첫 주는 3일(수,목,금)
+    dates = pd.date_range("2023-01-04", periods=8, freq="B")  # Wed~next Fri
+    df = pd.DataFrame(
+        {
+            "open": range(8),
+            "high": range(10, 18),
+            "low": range(8),
+            "close": range(1, 9),
+            "volume": [100] * 8,
+        },
+        index=dates,
+    )
+    weekly = resample_to_weekly(df)
+    assert len(weekly) >= 2
+    # 첫 partial week의 open은 첫 날 open
+    assert weekly.iloc[0]["open"] == df.iloc[0]["open"]

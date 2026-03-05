@@ -12,35 +12,69 @@
       "name": "전략 확장 + reason 인프라",
       "folder": "phase-1",
       "steps": {
-        "1": { "name": "전략 시그널 확장 (base.py, bb_rsi_ema.py)", "status": "passed" },
-        "2": { "name": "reason 전달 경로 (portfolio.py, engine.py)", "status": "passed" },
-        "3": { "name": "Phase 1 테스트", "status": "passed" }
+        "1": {
+          "name": "전략 시그널 확장 (base.py, bb_rsi_ema.py)",
+          "status": "passed"
+        },
+        "2": {
+          "name": "reason 전달 경로 (portfolio.py, engine.py)",
+          "status": "passed"
+        },
+        "3": {
+          "name": "Phase 1 테스트",
+          "status": "passed"
+        }
       }
     },
     "2": {
       "name": "Grid Search + 병렬화",
       "folder": "phase-2",
       "steps": {
-        "1": { "name": "data_loader resample_to_weekly()", "status": "pending" },
-        "2": { "name": "Grid Search 확장 + 병렬화", "status": "pending" },
-        "3": { "name": "Phase 2 테스트", "status": "pending" }
+        "1": {
+          "name": "data_loader resample_to_weekly()",
+          "status": "test_defined",
+          "test_defined": true
+        },
+        "2": {
+          "name": "Grid Search 확장 + 병렬화",
+          "status": "pending"
+        },
+        "3": {
+          "name": "Phase 2 테스트",
+          "status": "pending"
+        }
       }
     },
     "3": {
       "name": "Plotly HTML 보고서",
       "folder": "phase-3",
       "steps": {
-        "1": { "name": "Plotly 차트 함수 + requirements.txt", "status": "pending" },
-        "2": { "name": "HTML 보고서 조립", "status": "pending" },
-        "3": { "name": "Phase 3 테스트", "status": "pending" }
+        "1": {
+          "name": "Plotly 차트 함수 + requirements.txt",
+          "status": "pending"
+        },
+        "2": {
+          "name": "HTML 보고서 조립",
+          "status": "pending"
+        },
+        "3": {
+          "name": "Phase 3 테스트",
+          "status": "pending"
+        }
       }
     },
     "4": {
       "name": "CLI 통합",
       "folder": "phase-4",
       "steps": {
-        "1": { "name": "runner.py --full-report", "status": "pending" },
-        "2": { "name": "Phase 4 테스트", "status": "pending" }
+        "1": {
+          "name": "runner.py --full-report",
+          "status": "pending"
+        },
+        "2": {
+          "name": "Phase 4 테스트",
+          "status": "pending"
+        }
       }
     }
   },
