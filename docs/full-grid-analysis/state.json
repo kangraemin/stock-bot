@@ -6,7 +6,7 @@
   "plan_approved": true,
   "team_name": "dev-full-grid",
   "current_dev_phase": 2,
-  "current_step": 1,
+  "current_step": 2,
   "dev_phases": {
     "1": {
       "name": "전략 확장 + reason 인프라",
@@ -32,8 +32,8 @@
       "steps": {
         "1": {
           "name": "data_loader resample_to_weekly()",
-          "status": "test_defined",
-          "test_defined": true
+          "status": "passed",
+          "passed": true
         },
         "2": {
           "name": "Grid Search 확장 + 병렬화",
