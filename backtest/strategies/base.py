@@ -21,3 +21,8 @@ class Strategy(ABC):
     @abstractmethod
     def params(self) -> dict:
         """전략 파라미터 dict 반환"""
+
+    def generate_signals_with_reasons(self, df: pd.DataFrame):
+        signals = self.generate_signals(df)
+        reasons = pd.Series("", index=df.index)
+        return signals, reasons
