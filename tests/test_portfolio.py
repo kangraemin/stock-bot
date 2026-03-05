@@ -93,3 +93,35 @@ def test_update_equity(pf):
     pf.update_equity("2023-01-03", prices)
     assert len(pf.equity_curve) == 1
     assert pf.equity_curve[0]["equity"] == pytest.approx(pf.cash + 105 * 10)
+
+
+# ══════════════════════════════════════════════
+# Phase 1 Step 2: reason 전달 경로 TC
+# ══════════════════════════════════════════════
+
+
+# ── P1S2 TC-1: buy with reason ──
+def test_buy_with_reason(pf):
+    """buy(reason="...") 시 trade_log에 reason 키 포함"""
+    pf.buy("SPY", price=100, qty=5, reason="Close < BB_lower, RSI < 35")
+    assert len(pf.trade_log) == 1
+    assert "reason" in pf.trade_log[0]
+    assert pf.trade_log[0]["reason"] == "Close < BB_lower, RSI < 35"
+
+
+# ── P1S2 TC-2: sell with reason ──
+def test_sell_with_reason(pf):
+    """sell(reason="...") 시 trade_log에 reason 키 포함"""
+    pf.buy("SPY", price=100, qty=5)
+    pf.sell("SPY", price=110, qty=5, reason="Close > BB_upper, RSI > 65")
+    assert "reason" in pf.trade_log[1]
+    assert pf.trade_log[1]["reason"] == "Close > BB_upper, RSI > 65"
+
+
+# ── P1S2 TC-3: reason 미전달 시 빈 문자열 기본값 ──
+def test_buy_sell_default_reason_empty(pf):
+    """reason 파라미터 없이 호출 시 빈 문자열"""
+    pf.buy("SPY", price=100, qty=5)
+    pf.sell("SPY", price=110, qty=5)
+    assert pf.trade_log[0].get("reason") == ""
+    assert pf.trade_log[1].get("reason") == ""

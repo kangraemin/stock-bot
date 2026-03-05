@@ -102,3 +102,54 @@ def test_empty_dataframe():
     result = run_backtest(df, AlwaysHold())
     assert result["total_trades"] == 0
     assert result["final_equity"] == 2000
+
+
+# ══════════════════════════════════════════════
+# Phase 1 Step 2: reason 전달 경로 TC
+# ══════════════════════════════════════════════
+
+
+class BuySellOnceWithReasons(Strategy):
+    """generate_signals_with_reasons 구현 전략"""
+    def generate_signals(self, df):
+        signals = pd.Series(Signal.HOLD, index=df.index)
+        signals.iloc[0] = Signal.BUY
+        signals.iloc[-1] = Signal.SELL
+        return signals
+
+    def generate_signals_with_reasons(self, df):
+        signals = self.generate_signals(df)
+        reasons = pd.Series("", index=df.index)
+        reasons.iloc[0] = "test buy reason"
+        reasons.iloc[-1] = "test sell reason"
+        return signals, reasons
+
+    @property
+    def params(self):
+        return {"name": "buy_sell_once_with_reasons"}
+
+
+# ── P1S2 TC-4: with_reasons=True 시 generate_signals_with_reasons 호출 ──
+def test_run_backtest_with_reasons_flag(ohlcv_100):
+    """with_reasons=True 파라미터가 수용됨"""
+    result = run_backtest(ohlcv_100, BuySellOnceWithReasons(), with_reasons=True)
+    assert result["total_trades"] == 2
+
+
+# ── P1S2 TC-5: with_reasons=True 시 trades에 reason 포함 ──
+def test_run_backtest_with_reasons_trades_have_reason(ohlcv_100):
+    """with_reasons=True 일 때 trades 각 항목에 reason 키 존재"""
+    result = run_backtest(ohlcv_100, BuySellOnceWithReasons(), with_reasons=True)
+    assert len(result["trades"]) == 2
+    for trade in result["trades"]:
+        assert "reason" in trade
+        assert trade["reason"] != ""
+
+
+# ── P1S2 TC-6: with_reasons=False(기본) 시 기존 동작 유지 ──
+def test_run_backtest_default_no_reasons(ohlcv_100):
+    """with_reasons 미전달(기본 False) 시 기존과 동일 동작"""
+    result = run_backtest(ohlcv_100, BuySellOnce())
+    assert result["total_trades"] == 2
+    # 기존 동작: trades에 reason 키가 없거나 빈 문자열
+    assert "equity_curve" in result
