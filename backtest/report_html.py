@@ -1,7 +1,10 @@
 """Plotly 기반 인터랙티브 차트 생성"""
 
+from html import escape
+
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 
 
 def create_symbol_chart(
@@ -78,3 +81,80 @@ def create_period_comparison_chart(period_results: dict, symbol: str) -> go.Figu
 
     fig.update_layout(title=f"{symbol} Period Comparison", barmode="group")
     return fig
+
+
+def create_grid_results_table(grid_results: list[dict]) -> str:
+    if not grid_results:
+        return "<table></table>"
+
+    rows = []
+    rows.append("<table border='1' cellpadding='4' cellspacing='0'>")
+    rows.append("<tr><th>#</th><th>params</th><th>total_return</th>"
+                "<th>sharpe_ratio</th><th>max_drawdown</th><th>total_trades</th></tr>")
+
+    for i, r in enumerate(grid_results, 1):
+        params_str = ", ".join(f"{k}={v}" for k, v in r.get("params", {}).items())
+        rows.append(
+            f"<tr><td>{i}</td>"
+            f"<td>{escape(params_str)}</td>"
+            f"<td>{r.get('total_return', 0):.4f}</td>"
+            f"<td>{r.get('sharpe_ratio', 0):.4f}</td>"
+            f"<td>{r.get('max_drawdown', 0):.4f}</td>"
+            f"<td>{r.get('total_trades', 0)}</td></tr>"
+        )
+
+    rows.append("</table>")
+    return "\n".join(rows)
+
+
+def generate_full_html_report(
+    symbol_data: dict,
+    grid_results: list[dict] | None = None,
+    preset_results: dict | None = None,
+    output_path: str = "full_report.html",
+) -> str:
+    parts = []
+    parts.append("<!DOCTYPE html><html><head><title>Full Grid Analysis Report</title>")
+    parts.append('<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>')
+    parts.append("</head><body>")
+    parts.append("<h1>Full Grid Analysis Report</h1>")
+
+    # Navigation
+    parts.append("<nav>")
+    for symbol in symbol_data:
+        parts.append(f'<a href="#{symbol}">{symbol}</a> | ')
+    parts.append("</nav><hr>")
+
+    # Symbol sections
+    for symbol, sdata in symbol_data.items():
+        parts.append(f'<div id="{symbol}">')
+        parts.append(f"<h2>{symbol}</h2>")
+
+        fig = create_symbol_chart(
+            sdata["ohlcv"],
+            sdata.get("trades", []),
+            sdata.get("equity_curve", pd.Series(dtype=float)),
+            symbol,
+            bh_curve=sdata.get("bh_curve"),
+        )
+        parts.append(pio.to_html(fig, include_plotlyjs=False, full_html=False))
+        parts.append("</div>")
+
+    # Grid results table
+    if grid_results:
+        parts.append("<h2>Grid Search Top Results</h2>")
+        parts.append(create_grid_results_table(grid_results))
+
+    # Preset comparison
+    if preset_results:
+        parts.append("<h2>Preset Comparison</h2>")
+        fig = create_preset_comparison_chart(preset_results)
+        parts.append(pio.to_html(fig, include_plotlyjs=False, full_html=False))
+
+    parts.append("</body></html>")
+
+    html_content = "\n".join(parts)
+    with open(output_path, "w") as f:
+        f.write(html_content)
+
+    return output_path
