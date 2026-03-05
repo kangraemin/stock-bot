@@ -20,3 +20,6 @@
 | TC-8 | trade_log 기록 | buy/sell 후 trade_log에 기록 추가 |
 | TC-9 | trade_count | 거래 횟수 정확히 카운트 |
 | TC-10 | update_equity | 일별 equity 기록 |
+
+## 결과 ✅
+- 10/10 TC 통과 (pytest)
