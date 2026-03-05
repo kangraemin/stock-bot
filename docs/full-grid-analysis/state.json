@@ -54,6 +54,7 @@
       "steps": {
         "1": {
           "name": "Plotly 차트 함수 + requirements.txt",
+          "test_defined": true,
           "status": "pending"
         },
         "2": {
