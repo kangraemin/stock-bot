@@ -45,10 +45,10 @@ class BbRsiEma(Strategy):
         rsi = ta.momentum.RSIIndicator(close, window=self._rsi_window).rsi()
         ema = ta.trend.EMAIndicator(close, window=self._ema_window).ema_indicator()
 
-        # BUY: close < BB하한 AND RSI < 30 AND close > EMA
-        buy_mask = (close < bb_lower) & (rsi < 30) & (close > ema)
-        # SELL: close > BB상한 AND RSI > 70
-        sell_mask = (close > bb_upper) & (rsi > 70)
+        # BUY: close < BB하한 AND RSI < 35
+        buy_mask = (close < bb_lower) & (rsi < 35)
+        # SELL: close > BB상한 AND RSI > 65
+        sell_mask = (close > bb_upper) & (rsi > 65)
 
         signals[buy_mask] = Signal.BUY
         signals[sell_mask] = Signal.SELL

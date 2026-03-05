@@ -38,10 +38,14 @@ def download_symbol(
         if age < _CACHE_SECONDS:
             return
 
-    df = yfinance.download(symbol, period=period, progress=False)
+    df = yfinance.download(symbol, period=period, progress=False, auto_adjust=True)
 
     if df is None or df.empty:
         return
+
+    # MultiIndex 컬럼 처리 (yfinance 최신 버전)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
 
     # 컬럼 소문자 정규화
     df.columns = [c.lower() for c in df.columns]
