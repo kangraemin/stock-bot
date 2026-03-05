@@ -5,7 +5,7 @@
   },
   "plan_approved": true,
   "team_name": "dev-stock-bot-backtest",
-  "current_dev_phase": 4,
+  "current_dev_phase": 5,
   "current_step": 1,
   "dev_phases": {
     "1": {
@@ -30,13 +30,13 @@
       "name": "B&H + 그리드 서치 + 프리셋 비교",
       "folder": "phase-4-analysis",
       "steps": 4,
-      "status": "in_progress"
+      "status": "completed"
     },
     "5": {
       "name": "리포트 + CLI",
       "folder": "phase-5-report-cli",
       "steps": 2,
-      "status": "pending"
+      "status": "in_progress"
     },
     "6": {
       "name": "통합 테스트",

@@ -18,3 +18,6 @@
 | TC-6 | compute_metrics 반환 | dict with 모든 지표 키 |
 | TC-7 | 빈 equity curve | 에러 없이 기본값 반환 |
 | TC-8 | annualized_return | 연간 수익률 계산 |
+
+## 결과 ✅
+- 8/8 TC 통과 (pytest)
