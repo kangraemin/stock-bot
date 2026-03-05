@@ -5,26 +5,26 @@
   },
   "plan_approved": true,
   "team_name": "dev-stock-bot-backtest",
-  "current_dev_phase": 2,
+  "current_dev_phase": 3,
   "current_step": 1,
   "dev_phases": {
     "1": {
       "name": "기반 설정",
       "folder": "phase-1-foundation",
       "steps": 2,
-      "status": "in_progress"
+      "status": "completed"
     },
     "2": {
       "name": "데이터 + 전략 인터페이스",
       "folder": "phase-2-data-strategy",
       "steps": 3,
-      "status": "pending"
+      "status": "completed"
     },
     "3": {
       "name": "포트폴리오 + 엔진",
       "folder": "phase-3-portfolio-engine",
       "steps": 3,
-      "status": "pending"
+      "status": "in_progress"
     },
     "4": {
       "name": "B&H + 그리드 서치 + 프리셋 비교",
