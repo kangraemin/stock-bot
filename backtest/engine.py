@@ -18,6 +18,7 @@ def run_backtest(
     strategy: Strategy,
     capital: float = CAPITAL,
     fee_rate: float = FeeModel.STANDARD,
+    with_reasons: bool = False,
 ) -> dict:
     if df.empty:
         return {
@@ -28,24 +29,30 @@ def run_backtest(
             "params": strategy.params,
         }
 
-    signals = strategy.generate_signals(df)
+    if with_reasons:
+        signals, reasons = strategy.generate_signals_with_reasons(df)
+    else:
+        signals = strategy.generate_signals(df)
+        reasons = None
+
     pf = Portfolio(capital=capital, fee_rate=fee_rate)
     position_open = False
 
     for date, row in df.iterrows():
         price = row["close"]
         sig = signals.get(date, Signal.HOLD)
+        reason = reasons.get(date, "") if reasons is not None else ""
 
         if sig == Signal.BUY and not position_open:
             qty = pf.cash * 0.95 / (price * (1 + float(fee_rate)))
             if qty > 0:
-                pf.buy("asset", price=price, qty=qty)
+                pf.buy("asset", price=price, qty=qty, reason=reason)
                 position_open = True
 
         elif sig == Signal.SELL and position_open:
             qty = pf.positions.get("asset", 0)
             if qty > 0:
-                pf.sell("asset", price=price, qty=qty)
+                pf.sell("asset", price=price, qty=qty, reason=reason)
                 position_open = False
 
         pf.update_equity(str(date), {"asset": price})

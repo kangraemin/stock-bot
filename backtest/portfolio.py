@@ -15,18 +15,18 @@ class Portfolio:
     def trade_count(self) -> int:
         return len(self.trade_log)
 
-    def buy(self, symbol: str, price: float, qty: float) -> bool:
+    def buy(self, symbol: str, price: float, qty: float, reason: str = "") -> bool:
         cost = price * qty * (1 + self._fee_rate)
         if cost > self.cash:
             return False
         self.cash -= cost
         self.positions[symbol] = self.positions.get(symbol, 0) + qty
         self.trade_log.append(
-            {"action": "buy", "symbol": symbol, "price": price, "qty": qty, "cost": cost}
+            {"action": "buy", "symbol": symbol, "price": price, "qty": qty, "cost": cost, "reason": reason}
         )
         return True
 
-    def sell(self, symbol: str, price: float, qty: float) -> bool:
+    def sell(self, symbol: str, price: float, qty: float, reason: str = "") -> bool:
         if self.positions.get(symbol, 0) < qty:
             return False
         revenue = price * qty * (1 - self._fee_rate)
@@ -35,7 +35,7 @@ class Portfolio:
         if self.positions[symbol] == 0:
             del self.positions[symbol]
         self.trade_log.append(
-            {"action": "sell", "symbol": symbol, "price": price, "qty": qty, "revenue": revenue}
+            {"action": "sell", "symbol": symbol, "price": price, "qty": qty, "revenue": revenue, "reason": reason}
         )
         return True
 
