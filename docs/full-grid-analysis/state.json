@@ -6,7 +6,7 @@
   "plan_approved": true,
   "team_name": "dev-full-grid",
   "current_dev_phase": 3,
-  "current_step": 1,
+  "current_step": 2,
   "dev_phases": {
     "1": {
       "name": "전략 확장 + reason 인프라",
@@ -55,7 +55,8 @@
         "1": {
           "name": "Plotly 차트 함수 + requirements.txt",
           "test_defined": true,
-          "status": "pending"
+          "status": "passed",
+          "passed": true
         },
         "2": {
           "name": "HTML 보고서 조립",
