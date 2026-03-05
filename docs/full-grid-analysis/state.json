@@ -5,8 +5,8 @@
   },
   "plan_approved": true,
   "team_name": "dev-full-grid",
-  "current_dev_phase": 2,
-  "current_step": 3,
+  "current_dev_phase": 3,
+  "current_step": 1,
   "dev_phases": {
     "1": {
       "name": "전략 확장 + reason 인프라",
@@ -42,7 +42,9 @@
         },
         "3": {
           "name": "Phase 2 테스트",
-          "status": "pending"
+          "test_defined": true,
+          "status": "passed",
+          "passed": true
         }
       }
     },
