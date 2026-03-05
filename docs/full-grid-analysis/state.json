@@ -6,7 +6,7 @@
   "plan_approved": true,
   "team_name": "dev-full-grid",
   "current_dev_phase": 4,
-  "current_step": 1,
+  "current_step": 2,
   "dev_phases": {
     "1": {
       "name": "전략 확장 + reason 인프라",
@@ -79,11 +79,14 @@
         "1": {
           "name": "runner.py --full-report",
           "test_defined": true,
-          "status": "pending"
+          "status": "passed",
+          "passed": true
         },
         "2": {
           "name": "Phase 4 테스트",
-          "status": "pending"
+          "status": "passed",
+          "test_defined": true,
+          "passed": true
         }
       }
     }
