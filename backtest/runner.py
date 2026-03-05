@@ -18,11 +18,56 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--compare-buyhold", action="store_true", default=True, help="B&H 비교 (기본 ON)")
     parser.add_argument("--compare-presets", action="store_true", help="프리셋 비교 모드")
     parser.add_argument("--single-vs-mixed", action="store_true", help="단일 vs 혼합 비교")
+    parser.add_argument("--full-report", action="store_true", help="전체 분석 파이프라인 실행")
+    parser.add_argument("--periods", default="1y,3y,5y", help="분석 기간 (쉼표 구분)")
+    parser.add_argument("--timeframes", default="daily,weekly", help="타임프레임 (쉼표 구분)")
+    parser.add_argument("--output", default="full_report.html", help="출력 파일 경로")
+    parser.add_argument("--top-n", type=int, default=5, help="그리드 서치 top N")
+    parser.add_argument("--n-jobs", type=int, default=None, help="병렬 작업 수")
     return parser.parse_args(argv)
+
+
+def run_full_analysis(args):
+    from backtest.data_loader import load_multi
+    from backtest.grid_search import run_full_grid_search
+    from backtest.report_html import generate_full_html_report
+    from config import SYMBOLS_3X, SYMBOLS_BASE, FeeModel
+
+    all_symbols = SYMBOLS_BASE + SYMBOLS_3X
+    data = load_multi(all_symbols)
+
+    periods = args.periods.split(",")
+    timeframes = args.timeframes.split(",")
+    fee_rates = [float(FeeModel.STANDARD), float(FeeModel.EVENT)]
+
+    grid_results = run_full_grid_search(
+        data=data,
+        top_n=args.top_n,
+        periods=periods,
+        timeframes=timeframes,
+        fee_rates=fee_rates,
+        n_jobs=args.n_jobs,
+    )
+
+    # Build symbol_data for report
+    symbol_data = {}
+    for sym, df in data.items():
+        symbol_data[sym] = {"ohlcv": df, "trades": [], "equity_curve": df["close"]}
+
+    output_path = generate_full_html_report(
+        grid_results=grid_results,
+        symbol_data=symbol_data,
+        output_path=args.output,
+    )
+    print(f"Report generated: {output_path}")
 
 
 def main(argv=None):
     args = parse_args(argv)
+
+    if args.full_report:
+        run_full_analysis(args)
+        return
 
     from backtest.data_loader import load_multi, load_single
     from backtest.strategies.bb_rsi_ema import BbRsiEma
