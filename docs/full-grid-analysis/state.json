@@ -60,7 +60,8 @@
         },
         "2": {
           "name": "HTML 보고서 조립",
-          "status": "pending"
+          "status": "pending",
+          "test_defined": true
         },
         "3": {
           "name": "Phase 3 테스트",
