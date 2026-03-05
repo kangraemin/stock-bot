@@ -78,6 +78,7 @@
       "steps": {
         "1": {
           "name": "runner.py --full-report",
+          "test_defined": true,
           "status": "pending"
         },
         "2": {
