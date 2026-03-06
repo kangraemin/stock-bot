@@ -4,9 +4,9 @@
     "no_question_streak": 0
   },
   "plan_approved": true,
-  "team_name": "",
-  "current_dev_phase": 0,
-  "current_step": 0,
+  "team_name": "all-backtests-dev",
+  "current_dev_phase": 1,
+  "current_step": 1,
   "dev_phases": {},
   "verification": {
     "rounds_passed": 0
