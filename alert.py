@@ -44,6 +44,8 @@ SYMBOLS = {
 
 DCA_BOOST_RSI = 45
 COPPER_SMA_PERIOD = 50  # 구리 SMA 기간 (백테스트 최적)
+ATR_PERIOD = 14
+ATR_AVG_WINDOW = 60  # ATR 평균 비교 기간
 
 
 def get_copper_trend():
@@ -59,6 +61,49 @@ def get_copper_trend():
         return trend, close, sma
     except Exception:
         return None, None, None
+
+
+def get_vix_term():
+    """VIX/VIX3M ratio → contango/backwardation 판별"""
+    try:
+        vix = yf.Ticker("^VIX").history(period="5d", interval="1d")
+        vix3m = yf.Ticker("^VIX3M").history(period="5d", interval="1d")
+        if len(vix) < 1 or len(vix3m) < 1:
+            return None, None, None
+        v = vix["Close"].iloc[-1]
+        v3m = vix3m["Close"].iloc[-1]
+        ratio = v / v3m
+        if ratio > 1.05:
+            status = "backwardation"
+        elif ratio < 0.95:
+            status = "contango"
+        else:
+            status = "neutral"
+        return status, round(ratio, 3), round(v, 1)
+    except Exception:
+        return None, None, None
+
+
+def get_atr_ratio(symbol):
+    """현재 ATR vs 평균 ATR 비교 → 변동성 수준"""
+    try:
+        df = yf.Ticker(symbol).history(period="6mo", interval="1d")
+        if len(df) < ATR_AVG_WINDOW + ATR_PERIOD:
+            return None, None
+        tr = np.maximum(
+            df["High"] - df["Low"],
+            np.maximum(
+                abs(df["High"] - df["Close"].shift(1)),
+                abs(df["Low"] - df["Close"].shift(1)),
+            ),
+        )
+        atr_series = tr.rolling(ATR_PERIOD).mean()
+        current_atr = atr_series.iloc[-1]
+        avg_atr = atr_series.iloc[-ATR_AVG_WINDOW:].mean()
+        ratio = current_atr / avg_atr if avg_atr > 0 else 1.0
+        return round(ratio, 2), round(current_atr, 2)
+    except Exception:
+        return None, None
 
 
 def send_telegram(msg):
@@ -172,6 +217,7 @@ def check_symbol(symbol, config, copper_trend=None):
             warnings.append(f"재매수 임박: RSI {rsi_val:.0f} (목표 {rebuy_rsi})")
 
         dca_boost = rsi_val < DCA_BOOST_RSI
+        atr_ratio, atr_val = get_atr_ratio(symbol)
 
         if signal:
             save_state(symbol, {"state": new_state, "last_signal": signal,
@@ -196,6 +242,8 @@ def check_symbol(symbol, config, copper_trend=None):
             "date": date,
             "config": config,
             "copper_blocked": copper_blocked if has_copper_filter else None,
+            "atr_ratio": atr_ratio,
+            "atr_val": atr_val,
         }, None
 
     except Exception as e:
@@ -206,8 +254,9 @@ def main():
     results = []
     errors = []
 
-    # 구리 데이터 (TNA 매크로 필터용)
+    # 매크로 데이터
     copper_trend, copper_price, copper_sma = get_copper_trend()
+    vix_status, vix_ratio, vix_val = get_vix_term()
 
     for symbol, config in SYMBOLS.items():
         ct = copper_trend if config.get("macro_filter") == "copper" else None
@@ -243,6 +292,11 @@ def main():
             msgs.append(f"RSI: {r['rsi']:.0f}")
             msgs.append(f"사유: {r['reason']}")
             msgs.append(f"상태: {state_kr[r['state']]} → {state_kr[r['new_state']]}")
+            # 포지션 사이징 조언 (매수/재매수 시)
+            if r["signal"] in ("BUY", "REBUY"):
+                sizing = _position_advice(r, vix_status)
+                if sizing:
+                    msgs.append(f"💡 {sizing}")
             msgs.append("")
 
     # ── 종목별 현황 ──
@@ -271,11 +325,21 @@ def main():
         msgs.append("")
 
     # ── 매크로 ──
+    macro_lines = []
     if copper_trend:
         trend_emoji = "📈" if copper_trend == "up" else "📉"
-        msgs.append(f"🔧 매크로: 구리 {trend_emoji} ${copper_price:.2f} (SMA50 ${copper_sma:.2f})")
+        macro_lines.append(f"구리 {trend_emoji} ${copper_price:.2f} (SMA50 ${copper_sma:.2f})")
         if copper_trend == "down":
-            msgs.append("→ 구리 하락 중: TNA/UWM 매수 보류 권장")
+            macro_lines.append("→ 구리 하락 중: TNA/UWM 매수 보류 권장")
+    if vix_status:
+        vix_emoji = {"contango": "🟢", "neutral": "🟡", "backwardation": "🔴"}
+        vix_label = {"contango": "콘탱고(정상)", "neutral": "중립", "backwardation": "백워데이션(공포)"}
+        macro_lines.append(f"VIX {vix_emoji[vix_status]} {vix_label[vix_status]} (VIX/VIX3M={vix_ratio}, VIX={vix_val})")
+        if vix_status == "backwardation":
+            macro_lines.append("→ VIX 백워데이션: 포지션 축소 or 신규 진입 주의")
+    if macro_lines:
+        msgs.append("🔧 매크로")
+        msgs.extend(macro_lines)
         msgs.append("")
 
     # ── 용어 설명 ──
@@ -283,6 +347,9 @@ def main():
     msgs.append("RSI: 과매도(<30)/과매수(>70) 지표")
     msgs.append("BB: 볼린저밴드 (가격 변동 범위)")
     msgs.append("DCA: 매월 정기 분할 매수")
+    msgs.append("VIX Term: 콘탱고=안전, 백워데이션=공포")
+    msgs.append("ATR: 변동성 지표 (높으면 포지션 축소)")
+
 
     send_telegram("\n".join(msgs))
 
@@ -318,6 +385,9 @@ def _what_to_do(r):
         elif sell_gap < 5:
             return f"매도 근접 (RSI {sell_gap:.0f} 남음, BB상단 대기)"
         elif r.get("dca_boost"):
+            atr_r = r.get("atr_ratio")
+            if atr_r and atr_r > 1.3:
+                return f"보유 유지 + DCA 추가매수 구간 (변동성↑ 소량 추천)"
             return "보유 유지 + DCA 추가매수 추천 구간"
         else:
             return "보유 유지 (매도 조건 아님)"
@@ -332,6 +402,24 @@ def _what_to_do(r):
             return f"재매수 대기 중 (RSI {gap:.0f} 더 떨어져야 함)"
 
     return "관망"
+
+
+def _position_advice(r, vix_status):
+    """ATR 변동성 + VIX term 기반 포지션 사이징 조언"""
+    parts = []
+    atr_ratio = r.get("atr_ratio")
+    if atr_ratio is not None:
+        if atr_ratio > 1.5:
+            parts.append(f"변동성 매우 높음(ATR x{atr_ratio}) → 50% 포지션 권장")
+        elif atr_ratio > 1.2:
+            parts.append(f"변동성 높음(ATR x{atr_ratio}) → 70% 포지션 권장")
+        else:
+            parts.append("변동성 정상 → 풀 포지션 가능")
+    if vix_status == "backwardation":
+        parts.append("VIX 백워데이션 → 보수적 진입")
+    if not parts:
+        return None
+    return " / ".join(parts)
 
 
 def _rsi_bar(rsi_val):

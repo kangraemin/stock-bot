@@ -1,10 +1,10 @@
 {
-  "workflow_phase": "development",
+  "workflow_phase": "verification",
   "planning": {
     "no_question_streak": 0
   },
   "plan_approved": true,
-  "team_name": "all-backtests-dev",
+  "team_name": "dev-oos-validation",
   "current_dev_phase": 1,
   "current_step": 1,
   "dev_phases": {},
