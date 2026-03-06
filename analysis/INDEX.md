@@ -8,3 +8,4 @@
 | 2026-03-07 | backtest | 매크로 레짐 감지 | [링크](backtest/2026-03-07-macro-regime-detection.md) | 구리/유가/VIX/금/금리/달러 레짐. 4쌍x240조합. B&H 3x 승률 0~2%. TNA만 +474%. MaxDD 15~25%p 개선 |
 | 2026-03-07 | backtest | 매크로 레짐 + RSI 결합 | [링크](backtest/2026-03-07-macro-regime-rsi-combined.md) | 레짐을 필터로 활용. SOXL +385,753%(90B/89S). filter_block+force가 SPXL/TNA에서 압도. confirm=10d 최적 |
 | 2026-03-07 | backtest | 매크로 레짐 심층 분석 | [링크](backtest/2026-03-07-macro-regime-deep-analysis.md) | OOS: SOXL 과적합(0%), TNA만 유효(+117%). Ablation: oil+tnx 최강, copper/gold 무효. 실전: 종목별 다른 전략 필요 |
+| 2026-03-07 | backtest | 7가지 추가 실험 종합 | [링크](backtest/2026-03-07-seven-experiments.md) | BB+RSI 평균 +2,542% 1위. 8~9월 회피가 B&H 능가. Vol target MaxDD 30~50%p 개선. 3x ETF 상관 높아 분산 제한 |
