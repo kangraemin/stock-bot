@@ -35,7 +35,8 @@ SYMBOLS = {
     "TNA":  {"group": "3x 소형주", "buy_rsi": 35, "sell_rsi": 70, "rebuy_rsi": 50,
              "desc": "러셀2000 3배 레버리지", "macro_filter": "copper"},
     "QLD":  {"group": "2x 나스닥", "buy_rsi": 25, "sell_rsi": 70, "rebuy_rsi": 55,
-             "desc": "나스닥100 2배 레버리지"},
+             "desc": "나스닥100 2배 레버리지",
+             "atr_sizing": {"risk_pct": 0.05, "atr_mult": 1.5}},
     "UWM":  {"group": "2x 소형주", "buy_rsi": 25, "sell_rsi": 70, "rebuy_rsi": 50,
              "desc": "러셀2000 2배 레버리지", "macro_filter": "copper"},
     "QQQ":  {"group": "나스닥100", "buy_rsi": 25, "sell_rsi": 75, "rebuy_rsi": 55,
@@ -362,10 +363,18 @@ def _what_to_do(r):
     copper_blocked = r.get("copper_blocked")
 
     if r["signal"] == "BUY":
+        atr_sizing = c.get("atr_sizing")
+        if atr_sizing and r.get("atr_val") and r.get("atr_val") > 0:
+            pct = min(100, (atr_sizing["risk_pct"] / (r["atr_val"] * atr_sizing["atr_mult"] / r["price"])) * 100)
+            return f"지금 매수 타이밍! (포지션 {pct:.0f}% 권장)"
         return "지금 매수 타이밍!"
     elif r["signal"] == "SELL":
         return "지금 매도 타이밍!"
     elif r["signal"] == "REBUY":
+        atr_sizing = c.get("atr_sizing")
+        if atr_sizing and r.get("atr_val") and r.get("atr_val") > 0:
+            pct = min(100, (atr_sizing["risk_pct"] / (r["atr_val"] * atr_sizing["atr_mult"] / r["price"])) * 100)
+            return f"지금 재매수 타이밍! (포지션 {pct:.0f}% 권장)"
         return "지금 재매수 타이밍!"
 
     if state == "CASH":
@@ -408,13 +417,26 @@ def _position_advice(r, vix_status):
     """ATR 변동성 + VIX term 기반 포지션 사이징 조언"""
     parts = []
     atr_ratio = r.get("atr_ratio")
-    if atr_ratio is not None:
+    atr_val = r.get("atr_val")
+    atr_sizing = r.get("config", {}).get("atr_sizing")
+
+    if atr_sizing and atr_val and atr_val > 0:
+        # OOS 검증된 ATR sizing (QLD: risk=0.05, atr_mult=1.5)
+        risk_pct = atr_sizing["risk_pct"]
+        atr_mult = atr_sizing["atr_mult"]
+        price = r.get("price", 1)
+        # position_pct = (risk_pct / (atr_val * atr_mult / price)) * 100
+        stop_dist_pct = (atr_val * atr_mult / price) * 100
+        position_pct = min(100, (risk_pct / (atr_val * atr_mult / price)) * 100)
+        parts.append(f"포지션: {position_pct:.0f}% 권장 (ATR=${atr_val}, 스탑거리 {stop_dist_pct:.1f}%)")
+    elif atr_ratio is not None:
         if atr_ratio > 1.5:
             parts.append(f"변동성 매우 높음(ATR x{atr_ratio}) → 50% 포지션 권장")
         elif atr_ratio > 1.2:
             parts.append(f"변동성 높음(ATR x{atr_ratio}) → 70% 포지션 권장")
         else:
             parts.append("변동성 정상 → 풀 포지션 가능")
+
     if vix_status == "backwardation":
         parts.append("VIX 백워데이션 → 보수적 진입")
     if not parts:
