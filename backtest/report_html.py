@@ -143,7 +143,15 @@ def generate_full_html_report(
     # Grid results table
     if grid_results:
         parts.append("<h2>Grid Search Top Results</h2>")
-        parts.append(create_grid_results_table(grid_results))
+        if isinstance(grid_results, dict):
+            for sym, tf_data in grid_results.items():
+                for tf, period_data in tf_data.items():
+                    for period, fee_data in period_data.items():
+                        for fee_label, results_list in fee_data.items():
+                            parts.append(f"<h3>{sym} | {tf} | {period} | {fee_label}</h3>")
+                            parts.append(create_grid_results_table(results_list))
+        else:
+            parts.append(create_grid_results_table(grid_results))
 
     # Preset comparison
     if preset_results:

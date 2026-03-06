@@ -199,3 +199,62 @@ def test_resample_weekly_partial_week():
     assert len(weekly) >= 2
     # 첫 partial week의 open은 첫 날 open
     assert weekly.iloc[0]["open"] == df.iloc[0]["open"]
+
+
+# ── 시간봉 interval 지원 TC ──
+
+@pytest.fixture()
+def hourly_parquet(tmp_path):
+    """테스트용 시간봉 Parquet 파일"""
+    dates = pd.date_range("2024-01-02 09:30", periods=50, freq="h")
+    rng = np.random.default_rng(42)
+    df = pd.DataFrame(
+        {
+            "open": rng.uniform(100, 200, 50),
+            "high": rng.uniform(100, 200, 50),
+            "low": rng.uniform(100, 200, 50),
+            "close": rng.uniform(100, 200, 50),
+            "volume": rng.integers(1_000_000, 10_000_000, 50),
+        },
+        index=dates,
+    )
+    df.index.name = "Datetime"
+    df.to_parquet(tmp_path / "SPY_1h.parquet")
+    df.to_parquet(tmp_path / "SPY.parquet")  # 일봉용
+    df.to_parquet(tmp_path / "QQQ_1h.parquet")
+    return tmp_path
+
+
+def test_load_single_interval_param_exists():
+    """load_single에 interval 파라미터 존재"""
+    import inspect
+    sig = inspect.signature(load_single)
+    assert "interval" in sig.parameters
+
+
+def test_load_single_hourly(hourly_parquet):
+    """interval='1h' 시 SPY_1h.parquet 로드"""
+    df = load_single("SPY", data_dir=hourly_parquet, interval="1h")
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 50
+
+
+def test_load_single_daily_default(hourly_parquet):
+    """interval='1d' 기본값 시 SPY.parquet 로드"""
+    df = load_single("SPY", data_dir=hourly_parquet)
+    assert isinstance(df, pd.DataFrame)
+
+
+def test_load_multi_interval_param_exists():
+    """load_multi에 interval 파라미터 존재"""
+    import inspect
+    sig = inspect.signature(load_multi)
+    assert "interval" in sig.parameters
+
+
+def test_load_multi_hourly(hourly_parquet):
+    """load_multi(symbols, interval='1h') 동작"""
+    result = load_multi(["SPY", "QQQ"], data_dir=hourly_parquet, interval="1h")
+    assert "SPY" in result
+    assert "QQQ" in result
+    assert len(result["SPY"]) == 50

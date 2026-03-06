@@ -177,3 +177,77 @@ def test_full_grid_search_timeframes(price_df):
     spy = result["SPY"]
     assert "daily" in spy
     assert "weekly" in spy
+
+
+# ── hourly 지원 TC ──
+
+
+@pytest.fixture()
+def hourly_df():
+    """시간봉 데이터 (약 130개 = 20 영업일 x 6.5h)"""
+    dates = pd.date_range("2024-01-02 09:30", periods=130, freq="h")
+    rng = np.random.default_rng(42)
+    close = 100 + rng.standard_normal(130).cumsum()
+    return pd.DataFrame(
+        {
+            "open": close,
+            "high": close + 1,
+            "low": close - 1,
+            "close": close,
+            "volume": rng.integers(1_000_000, 10_000_000, 130),
+        },
+        index=dates,
+    )
+
+
+def test_run_grid_search_periods_per_year_param():
+    """run_grid_search에 periods_per_year 파라미터 존재"""
+    import inspect
+    sig = inspect.signature(run_grid_search)
+    assert "periods_per_year" in sig.parameters
+
+
+def test_full_grid_search_hourly_data_param():
+    """run_full_grid_search에 hourly_data 파라미터 존재"""
+    import inspect
+    assert run_full_grid_search is not None
+    sig = inspect.signature(run_full_grid_search)
+    assert "hourly_data" in sig.parameters
+
+
+def test_full_grid_search_hourly_results(price_df, hourly_df):
+    """timeframes=['hourly'] + hourly_data 시 hourly 결과"""
+    assert run_full_grid_search is not None
+    data = {"SPY": price_df}
+    hourly_data = {"SPY": hourly_df}
+    result = run_full_grid_search(
+        data, grid=SMALL_FULL_GRID, top_n=2,
+        timeframes=["hourly"], hourly_data=hourly_data,
+    )
+    assert "hourly" in result["SPY"]
+
+
+def test_full_grid_search_hourly_skip_no_data(price_df):
+    """hourly_data 없이 timeframes에 hourly → hourly 스킵"""
+    assert run_full_grid_search is not None
+    data = {"SPY": price_df}
+    result = run_full_grid_search(
+        data, grid=SMALL_FULL_GRID, top_n=2,
+        timeframes=["hourly"],
+    )
+    spy = result["SPY"]
+    assert "hourly" not in spy
+
+
+def test_full_grid_search_mixed_timeframes(price_df, hourly_df):
+    """daily + hourly 혼합"""
+    assert run_full_grid_search is not None
+    data = {"SPY": price_df}
+    hourly_data = {"SPY": hourly_df}
+    result = run_full_grid_search(
+        data, grid=SMALL_FULL_GRID, top_n=2,
+        timeframes=["daily", "hourly"], hourly_data=hourly_data,
+    )
+    spy = result["SPY"]
+    assert "daily" in spy
+    assert "hourly" in spy

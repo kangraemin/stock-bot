@@ -1,9 +1,10 @@
 """Phase 4 Step 1: metrics.py TC"""
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from backtest.metrics import compute_metrics
+from backtest.metrics import compute_metrics, compute_metrics_fast
 
 
 @pytest.fixture()
@@ -79,3 +80,50 @@ def test_annualized_return(equity_curve):
     m = compute_metrics(equity_curve)
     assert "annualized_return" in m
     assert isinstance(m["annualized_return"], float)
+
+
+# ── periods_per_year 파라미터 TC ──
+
+@pytest.fixture()
+def fast_equity():
+    """compute_metrics_fast용 numpy equity curve"""
+    dates = pd.date_range("2023-01-02", periods=100, freq="B")
+    equity = np.array([2000 + i * 10.0 for i in range(100)])
+    return equity, dates.values
+
+
+def test_compute_metrics_fast_periods_param_exists():
+    """compute_metrics_fast에 periods_per_year 파라미터 존재"""
+    import inspect
+    sig = inspect.signature(compute_metrics_fast)
+    assert "periods_per_year" in sig.parameters
+
+
+def test_compute_metrics_fast_default_252(fast_equity):
+    """periods_per_year=252 시 기존과 동일"""
+    equity, dates = fast_equity
+    m_default = compute_metrics_fast(equity, dates, total_trades=5)
+    m_explicit = compute_metrics_fast(equity, dates, total_trades=5, periods_per_year=252)
+    assert m_default["sharpe_ratio"] == pytest.approx(m_explicit["sharpe_ratio"], rel=1e-9)
+
+
+def test_compute_metrics_fast_1638_differs(fast_equity):
+    """periods_per_year=1638 시 다른 Sharpe 값"""
+    equity, dates = fast_equity
+    m_daily = compute_metrics_fast(equity, dates, total_trades=5, periods_per_year=252)
+    m_hourly = compute_metrics_fast(equity, dates, total_trades=5, periods_per_year=1638)
+    assert m_daily["sharpe_ratio"] != pytest.approx(m_hourly["sharpe_ratio"], rel=0.01)
+
+
+def test_compute_metrics_periods_param_exists():
+    """compute_metrics에 periods_per_year 파라미터 존재"""
+    import inspect
+    sig = inspect.signature(compute_metrics)
+    assert "periods_per_year" in sig.parameters
+
+
+def test_compute_metrics_default_unchanged(equity_curve):
+    """기본값(파라미터 없음) 시 기존 동작 유지"""
+    m1 = compute_metrics(equity_curve)
+    m2 = compute_metrics(equity_curve, periods_per_year=252)
+    assert m1["sharpe_ratio"] == pytest.approx(m2["sharpe_ratio"], rel=1e-9)

@@ -128,3 +128,60 @@ class TestDefaults:
         with patch("yfinance.download", return_value=pd.DataFrame()):
             # 빈 DataFrame 반환 시 크래시하면 안 됨
             download_symbol("INVALID_XYZ_999", data_dir=tmp_data_dir)
+
+
+class TestInterval:
+    """시간봉(1h) interval 지원 테스트"""
+
+    def test_interval_param_exists(self):
+        """download_symbol에 interval 파라미터 존재"""
+        import inspect
+        from download import download_symbol
+        sig = inspect.signature(download_symbol)
+        assert "interval" in sig.parameters
+
+    def test_hourly_filename(self, mock_yf_download, tmp_data_dir):
+        """interval='1h' 시 SPY_1h.parquet 파일명"""
+        from download import download_symbol
+        download_symbol("SPY", data_dir=tmp_data_dir, interval="1h")
+        assert (tmp_data_dir / "SPY_1h.parquet").exists()
+        assert not (tmp_data_dir / "SPY.parquet").exists()
+
+    def test_daily_filename_unchanged(self, mock_yf_download, tmp_data_dir):
+        """interval='1d' (기본값) 시 기존 SPY.parquet 유지"""
+        from download import download_symbol
+        download_symbol("SPY", data_dir=tmp_data_dir, interval="1d")
+        assert (tmp_data_dir / "SPY.parquet").exists()
+
+    def test_hourly_passes_interval_to_yfinance(self, mock_yf_download, tmp_data_dir):
+        """interval='1h' 시 yfinance.download에 interval='1h' 전달"""
+        from download import download_symbol
+        download_symbol("SPY", data_dir=tmp_data_dir, interval="1h")
+        _, kwargs = mock_yf_download.call_args
+        assert kwargs.get("interval") == "1h"
+
+    def test_hourly_forces_period_730d(self, mock_yf_download, tmp_data_dir):
+        """interval='1h' + period='5y' → period='730d'로 강제"""
+        from download import download_symbol
+        download_symbol("SPY", data_dir=tmp_data_dir, interval="1h", period="5y")
+        _, kwargs = mock_yf_download.call_args
+        assert kwargs.get("period") == "730d"
+
+    def test_hourly_cache_works(self, mock_yf_download, tmp_data_dir):
+        """시간봉 파일도 캐시 동작"""
+        from download import download_symbol
+        download_symbol("SPY", data_dir=tmp_data_dir, interval="1h")
+        download_symbol("SPY", data_dir=tmp_data_dir, interval="1h")
+        assert mock_yf_download.call_count == 1
+
+    def test_cli_interval_option(self):
+        """CLI --interval 옵션 파싱"""
+        from download import parse_args
+        args = parse_args(["--interval", "1h"])
+        assert args.interval == "1h"
+
+    def test_cli_interval_default(self):
+        """CLI interval 기본값 1d"""
+        from download import parse_args
+        args = parse_args([])
+        assert args.interval == "1d"

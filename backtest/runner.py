@@ -19,11 +19,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--compare-presets", action="store_true", help="프리셋 비교 모드")
     parser.add_argument("--single-vs-mixed", action="store_true", help="단일 vs 혼합 비교")
     parser.add_argument("--full-report", action="store_true", help="전체 분석 파이프라인 실행")
-    parser.add_argument("--periods", default="1y,3y,5y", help="분석 기간 (쉼표 구분)")
+    parser.add_argument("--periods", default="1y,3y,5y,10y,20y", help="분석 기간 (쉼표 구분)")
     parser.add_argument("--timeframes", default="daily,weekly", help="타임프레임 (쉼표 구분)")
     parser.add_argument("--output", default="full_report.html", help="출력 파일 경로")
     parser.add_argument("--top-n", type=int, default=5, help="그리드 서치 top N")
     parser.add_argument("--n-jobs", type=int, default=None, help="병렬 작업 수")
+    parser.add_argument("--progress", action="store_true", help="진행률 표시")
     return parser.parse_args(argv)
 
 
@@ -40,6 +41,10 @@ def run_full_analysis(args):
     timeframes = args.timeframes.split(",")
     fee_rates = [float(FeeModel.STANDARD), float(FeeModel.EVENT)]
 
+    hourly_data = None
+    if "hourly" in timeframes:
+        hourly_data = load_multi(all_symbols, interval="1h")
+
     grid_results = run_full_grid_search(
         data=data,
         top_n=args.top_n,
@@ -47,6 +52,8 @@ def run_full_analysis(args):
         timeframes=timeframes,
         fee_rates=fee_rates,
         n_jobs=args.n_jobs,
+        progress=args.progress,
+        hourly_data=hourly_data,
     )
 
     # Build symbol_data for report

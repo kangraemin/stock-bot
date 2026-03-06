@@ -8,3 +8,4 @@ backtest/output/
 dist/
 build/
 .pytest_cache/
+.grid_cache/

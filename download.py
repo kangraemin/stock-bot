@@ -26,11 +26,13 @@ def download_symbol(
     data_dir: pathlib.Path = DATA_DIR,
     force: bool = False,
     period: str = "5y",
+    interval: str = "1d",
 ) -> None:
     data_dir = pathlib.Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    path = data_dir / f"{symbol}.parquet"
+    suffix = f"_{interval}" if interval != "1d" else ""
+    path = data_dir / f"{symbol}{suffix}.parquet"
 
     # 캐시 체크
     if not force and path.exists():
@@ -38,7 +40,11 @@ def download_symbol(
         if age < _CACHE_SECONDS:
             return
 
-    df = yfinance.download(symbol, period=period, progress=False, auto_adjust=True)
+    # yfinance 1h 제약: 최대 730일
+    if interval == "1h":
+        period = "730d"
+
+    df = yfinance.download(symbol, period=period, interval=interval, progress=False, auto_adjust=True)
 
     if df is None or df.empty:
         return
@@ -59,6 +65,7 @@ def parse_args(argv=None) -> argparse.Namespace:
         "--symbols", nargs="+", default=DEFAULT_SYMBOLS, help="다운로드할 심볼 목록"
     )
     parser.add_argument("--period", default="5y", help="다운로드 기간 (기본: 5y)")
+    parser.add_argument("--interval", default="1d", help="봉 단위 (기본: 1d, 시간봉: 1h)")
     parser.add_argument("--force", action="store_true", help="캐시 무시하고 재다운로드")
     return parser.parse_args(argv)
 
@@ -67,4 +74,4 @@ if __name__ == "__main__":
     args = parse_args()
     for sym in args.symbols:
         print(f"Downloading {sym}...")
-        download_symbol(sym, force=args.force, period=args.period)
+        download_symbol(sym, force=args.force, period=args.period, interval=args.interval)

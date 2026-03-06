@@ -105,3 +105,40 @@ def test_n_jobs_parsing():
 def test_run_full_analysis_exists():
     from backtest.runner import run_full_analysis  # noqa: F401
     assert callable(run_full_analysis)
+
+
+# ── hourly 통합 TC ──
+
+def test_timeframes_hourly_parsing():
+    """--timeframes daily,weekly,hourly 파싱"""
+    args = parse_args(["--full-report", "--timeframes", "daily,weekly,hourly"])
+    tfs = args.timeframes.split(",")
+    assert "hourly" in tfs
+    assert "daily" in tfs
+
+
+def test_run_full_analysis_loads_hourly():
+    """run_full_analysis에서 hourly가 timeframes에 있으면 load_multi(interval='1h') 호출"""
+    from unittest.mock import patch
+    import pandas as pd
+
+    mock_df = pd.DataFrame(
+        {"open": [1], "high": [2], "low": [0], "close": [1], "volume": [100]},
+        index=pd.date_range("2024-01-02", periods=1, freq="B"),
+    )
+
+    with patch("backtest.data_loader.load_single") as mock_load_single, \
+         patch("backtest.grid_search.run_full_grid_search") as mock_grid, \
+         patch("backtest.report_html.generate_full_html_report", return_value="test.html"):
+        mock_load_single.return_value = mock_df
+        mock_grid.return_value = {}
+
+        args = parse_args(["--full-report", "--timeframes", "daily,hourly"])
+        from backtest.runner import run_full_analysis
+        run_full_analysis(args)
+
+        # run_full_grid_search가 hourly_data를 받았는지 확인
+        mock_grid.assert_called_once()
+        call_kwargs = mock_grid.call_args[1] if mock_grid.call_args[1] else {}
+        # keyword args 또는 positional으로 hourly_data가 전달됨
+        assert "hourly_data" in call_kwargs or len(mock_grid.call_args[0]) > 1

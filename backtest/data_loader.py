@@ -16,8 +16,10 @@ def load_single(
     data_dir: pathlib.Path = DATA_DIR,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    interval: str = "1d",
 ) -> pd.DataFrame:
-    path = pathlib.Path(data_dir) / f"{symbol}.parquet"
+    suffix = f"_{interval}" if interval != "1d" else ""
+    path = pathlib.Path(data_dir) / f"{symbol}{suffix}.parquet"
     if not path.exists():
         raise FileNotFoundError(f"{path} not found")
 
@@ -49,12 +51,14 @@ def load_multi(
     data_dir: pathlib.Path = DATA_DIR,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    interval: str = "1d",
 ) -> dict[str, pd.DataFrame]:
     result = {}
     for sym in symbols:
         try:
             result[sym] = load_single(
-                sym, data_dir=data_dir, start_date=start_date, end_date=end_date
+                sym, data_dir=data_dir, start_date=start_date, end_date=end_date,
+                interval=interval,
             )
         except FileNotFoundError:
             logger.warning("%s: parquet file not found, skipping", sym)

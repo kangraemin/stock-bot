@@ -1,5 +1,6 @@
 """백테스트 엔진: 단일 종목 + 포트폴리오"""
 
+import numpy as np
 import pandas as pd
 
 from backtest.portfolio import Portfolio
@@ -62,6 +63,87 @@ def run_backtest(
         "total_trades": pf.trade_count,
         "final_equity": pf.get_total_equity({"asset": df.iloc[-1]["close"]}),
         "trades": pf.trade_log,
+        "params": strategy.params,
+    }
+
+
+def run_backtest_fast(
+    df: pd.DataFrame,
+    strategy: Strategy,
+    capital: float = CAPITAL,
+    fee_rate: float = FeeModel.STANDARD,
+) -> dict:
+    """Grid search optimized backtest — no trade log, numpy equity curve."""
+    if df.empty:
+        return {
+            "equity_curve_np": np.array([capital]),
+            "total_trades": 0,
+            "dates": np.array([]),
+            "params": strategy.params,
+        }
+
+    signals = strategy.generate_signals(df)
+    close = df["close"].values
+    sig_values = signals.values.astype(int)
+    n = len(close)
+
+    # Filter to alternating BUY/SELL (respecting position state)
+    trade_signals = np.zeros(n, dtype=int)
+    in_position = False
+    for i in range(n):
+        if sig_values[i] == 1 and not in_position:
+            trade_signals[i] = 1
+            in_position = True
+        elif sig_values[i] == -1 and in_position:
+            trade_signals[i] = -1
+            in_position = False
+
+    # Compute equity with minimal loop over trade events only
+    fee_buy = 1 + float(fee_rate)
+    fee_sell = 1 - float(fee_rate)
+
+    # Collect trade indices
+    trade_idx = np.where(trade_signals != 0)[0]
+    total_trades = len(trade_idx)
+
+    # Build cash/qty state at each trade event
+    cash_arr = np.empty(len(trade_idx) + 1)
+    qty_arr = np.empty(len(trade_idx) + 1)
+    cash_arr[0] = capital
+    qty_arr[0] = 0.0
+
+    for j, i in enumerate(trade_idx):
+        c, q = cash_arr[j], qty_arr[j]
+        if trade_signals[i] == 1:  # BUY
+            alloc = c * 0.95
+            buy_qty = alloc / (close[i] * fee_buy)
+            cash_arr[j + 1] = c - close[i] * buy_qty * fee_buy
+            qty_arr[j + 1] = buy_qty
+        else:  # SELL
+            cash_arr[j + 1] = c + close[i] * q * fee_sell
+            qty_arr[j + 1] = 0.0
+
+    # Build full equity curve using numpy segments
+    equity = np.empty(n)
+    boundaries = np.concatenate([[0], trade_idx, [n]])
+    for j in range(len(boundaries) - 1):
+        start = boundaries[j]
+        end = boundaries[j + 1]
+        if j < len(trade_idx) and start == trade_idx[j]:
+            # After this trade event
+            c, q = cash_arr[j + 1], qty_arr[j + 1]
+            equity[start] = c + q * close[start]
+            start += 1
+            if start < end:
+                equity[start:end] = c + q * close[start:end]
+        else:
+            c, q = cash_arr[j], qty_arr[j]
+            equity[start:end] = c + q * close[start:end]
+
+    return {
+        "equity_curve_np": equity,
+        "total_trades": total_trades,
+        "dates": df.index.values,
         "params": strategy.params,
     }
 
