@@ -10,3 +10,4 @@
 | 2026-03-07 | backtest | 매크로 레짐 심층 분석 | [링크](backtest/2026-03-07-macro-regime-deep-analysis.md) | OOS: SOXL 과적합(0%), TNA만 유효(+117%). Ablation: oil+tnx 최강, copper/gold 무효. 실전: 종목별 다른 전략 필요 |
 | 2026-03-07 | backtest | 7가지 추가 실험 종합 | [링크](backtest/2026-03-07-seven-experiments.md) | BB+RSI 평균 +2,542% 1위. 8~9월 회피가 B&H 능가. Vol target MaxDD 30~50%p 개선. 3x ETF 상관 높아 분산 제한 |
 | 2026-03-07 | backtest | OOS 검증: VIX Term + ATR Sizing | [링크](backtest/2026-03-07-oos-validation-vix-atr.md) | VIX term: 4종목 중 3개 FAIL(과적합). ATR sizing: all-in 최적, QLD만 OOS 통과(+27%p). 두 전략 모두 조언용으로만 반영 |
+| 2026-03-07 | backtest | 5가지 추가 실험 + 실전 시뮬 | [링크](backtest/2026-03-07-five-additional-experiments.md) | 89회피+BB결합 시너지없음. 수수료 둔감(거래적음). VIX스케일링 MaxDD개선. 실전시뮬: TNA/UWM만 B&H초과, 강세장서 타이밍전략 열위 |
