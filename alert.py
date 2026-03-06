@@ -203,7 +203,7 @@ def check_symbol(symbol, config, copper_trend=None):
         elif current_state == "CASH":
             if rsi_val < buy_rsi:
                 if copper_blocked:
-                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} 매수 조건이지만 구리 하락 중 → 매수 보류"
+                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} 매수 조건이지만 구리(경기지표) 하락 → 소형주 약세 우려로 매수 보류"
                 else:
                     signal = "BUY"
                     new_state = "HOLDING"
@@ -216,7 +216,7 @@ def check_symbol(symbol, config, copper_trend=None):
         elif current_state == "WAIT_REBUY":
             if rsi_val < rebuy_rsi:
                 if copper_blocked:
-                    reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} 재매수 조건이지만 구리 하락 중 → 재매수 보류"
+                    reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} 재매수 조건이지만 구리(경기지표) 하락 → 소형주 약세 우려로 재매수 보류"
                 else:
                     signal = "REBUY"
                     new_state = "HOLDING"
@@ -358,7 +358,7 @@ def main():
         trend_emoji = "📈" if copper_trend == "up" else "📉"
         macro_lines.append(f"구리 {trend_emoji} ${copper_price:.2f} (SMA50 ${copper_sma:.2f})")
         if copper_trend == "down":
-            macro_lines.append("→ 구리 하락 중: TNA/UWM 매수 보류 권장")
+            macro_lines.append("→ 구리(경기지표) 하락: 소형주(TNA/UWM) 매수 보류 권장")
     if vix_status:
         vix_emoji = {"contango": "🟢", "neutral": "🟡", "backwardation": "🔴"}
         vix_label = {"contango": "콘탱고(정상)", "neutral": "중립", "backwardation": "백워데이션(공포)"}
@@ -418,7 +418,7 @@ def _what_to_do(r):
     if state == "CASH":
         gap = rv - c["buy_rsi"]
         if copper_blocked and gap < 10:
-            return f"매수 조건 근접 but 구리↓ 매수 보류 (RSI {gap:.0f} 남음)"
+            return f"매수 조건 근접 but 구리(경기지표)↓ 소형주 약세 우려 → 매수 보류 (RSI {gap:.0f} 남음)"
         elif gap < 10:
             return f"매수 대기 중 (RSI {gap:.0f} 더 떨어지면 매수)"
         else:
@@ -442,7 +442,7 @@ def _what_to_do(r):
     elif state == "WAIT_REBUY":
         gap = rv - c["rebuy_rsi"]
         if copper_blocked and gap < 5:
-            return f"재매수 조건 근접 but 구리↓ 재매수 보류 (RSI {gap:.0f} 남음)"
+            return f"재매수 조건 근접 but 구리(경기지표)↓ 소형주 약세 우려 → 재매수 보류 (RSI {gap:.0f} 남음)"
         elif gap < 5:
             return f"재매수 임박! (RSI {gap:.0f} 더 떨어지면 재매수)"
         else:
