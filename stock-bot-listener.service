@@ -1,0 +1,15 @@
+[Unit]
+Description=Stock Bot Telegram Listener
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/stock-bot
+ExecStart=/home/ubuntu/stock-bot/venv/bin/python bot_listener.py
+Restart=always
+RestartSec=10
+EnvironmentFile=/home/ubuntu/stock-bot/.env
+
+[Install]
+WantedBy=multi-user.target
