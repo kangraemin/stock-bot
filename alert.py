@@ -9,6 +9,7 @@ Cron:  0 21 * * 0-4 cd /home/ubuntu/stock-bot && venv/bin/python alert.py
 """
 import os
 import json
+import datetime
 import urllib.request
 import urllib.parse
 import yfinance as yf
@@ -41,6 +42,11 @@ SYMBOLS = {
              "desc": "러셀2000 2배 레버리지", "macro_filter": "copper"},
     "QQQ":  {"group": "나스닥100", "buy_rsi": 25, "sell_rsi": 75, "rebuy_rsi": 55,
              "desc": "나스닥100 인덱스"},
+    # buy_only: 매수 타이밍만 제공 (B&H 종목, 매도 시그널 없음)
+    "GGLL": {"group": "2x 구글", "buy_rsi": 30, "sell_rsi": None, "rebuy_rsi": None,
+             "desc": "구글 2배 레버리지", "buy_only": True},
+    "NVDA": {"group": "엔비디아", "buy_rsi": 35, "sell_rsi": None, "rebuy_rsi": None,
+             "desc": "엔비디아 현물", "buy_only": True},
 }
 
 DCA_BOOST_RSI = 45
@@ -178,12 +184,23 @@ def check_symbol(symbol, config, copper_trend=None):
         # 구리 필터: copper_trend가 "down"이면 매수/재매수 차단
         has_copper_filter = config.get("macro_filter") == "copper"
         copper_blocked = has_copper_filter and copper_trend == "down"
+        is_buy_only = config.get("buy_only", False)
 
         signal = None
         new_state = current_state
         reason = ""
 
-        if current_state == "CASH":
+        if is_buy_only:
+            # buy_only: 매수 타이밍만 제공 (상태 항상 CASH)
+            was_below = state_data.get("below_threshold", False)
+            if rsi_val < buy_rsi:
+                if not was_below:
+                    signal = "BUY_TIMING"
+                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} (매수 적기 — B&H 저점 매수)"
+                else:
+                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} (과매도 구간 지속)"
+            new_state = "CASH"
+        elif current_state == "CASH":
             if rsi_val < buy_rsi:
                 if copper_blocked:
                     reason = f"RSI {rsi_val:.0f} < {buy_rsi} 매수 조건이지만 구리 하락 중 → 매수 보류"
@@ -207,7 +224,10 @@ def check_symbol(symbol, config, copper_trend=None):
 
         # Proximity warnings
         warnings = []
-        if current_state == "CASH" and rsi_val < buy_rsi + 10:
+        if is_buy_only:
+            if rsi_val < buy_rsi + 10 and rsi_val >= buy_rsi:
+                warnings.append(f"매수 임박: RSI {rsi_val:.0f} (목표 {buy_rsi})")
+        elif current_state == "CASH" and rsi_val < buy_rsi + 10:
             warnings.append(f"매수 임박: RSI {rsi_val:.0f} (목표 {buy_rsi})")
         elif current_state == "HOLDING":
             if rsi_val > sell_rsi - 5:
@@ -220,7 +240,11 @@ def check_symbol(symbol, config, copper_trend=None):
         dca_boost = rsi_val < DCA_BOOST_RSI
         atr_ratio, atr_val = get_atr_ratio(symbol)
 
-        if signal:
+        if is_buy_only:
+            save_state(symbol, {"state": "CASH", "below_threshold": bool(rsi_val < buy_rsi),
+                                "last_signal": signal, "last_date": date,
+                                "last_price": round(price, 2)})
+        elif signal:
             save_state(symbol, {"state": new_state, "last_signal": signal,
                                 "last_date": date, "last_price": round(price, 2)})
         else:
@@ -285,19 +309,22 @@ def main():
     # ── SIGNALS ──
     if signals:
         for r in signals:
-            emoji = {"BUY": "🟢", "SELL": "🔴", "REBUY": "🟢"}
-            action = {"BUY": "매수", "SELL": "매도", "REBUY": "재매수"}
+            emoji = {"BUY": "🟢", "SELL": "🔴", "REBUY": "🟢", "BUY_TIMING": "🔵"}
+            action = {"BUY": "매수", "SELL": "매도", "REBUY": "재매수", "BUY_TIMING": "매수 적기"}
             msgs.append(f"{emoji[r['signal']]} {r['symbol']} {action[r['signal']]} 시그널!")
             msgs.append(f"종목: {r['desc']}")
             msgs.append(f"가격: ${r['price']:.2f} ({r['change_pct']:+.1f}%)")
             msgs.append(f"RSI: {r['rsi']:.0f}")
             msgs.append(f"사유: {r['reason']}")
-            msgs.append(f"상태: {state_kr[r['state']]} → {state_kr[r['new_state']]}")
-            # 포지션 사이징 조언 (매수/재매수 시)
-            if r["signal"] in ("BUY", "REBUY"):
-                sizing = _position_advice(r, vix_status)
-                if sizing:
-                    msgs.append(f"💡 {sizing}")
+            if r["signal"] == "BUY_TIMING":
+                msgs.append("💡 B&H 종목 — 지금 사서 장기 보유 추천")
+            else:
+                msgs.append(f"상태: {state_kr[r['state']]} → {state_kr[r['new_state']]}")
+                # 포지션 사이징 조언 (매수/재매수 시)
+                if r["signal"] in ("BUY", "REBUY"):
+                    sizing = _position_advice(r, vix_status)
+                    if sizing:
+                        msgs.append(f"💡 {sizing}")
             msgs.append("")
 
     # ── 종목별 현황 ──
@@ -361,21 +388,32 @@ def _what_to_do(r):
     state = r["new_state"] if r["signal"] else r["state"]
     c = r["config"]
     copper_blocked = r.get("copper_blocked")
+    month = datetime.date.today().month
+    seasonal_warn = " ⚠️ 계절적 약세 구간 (8~9월)" if month in (8, 9) else ""
+
+    # buy_only 종목: 매수 타이밍만 제공
+    if c.get("buy_only"):
+        if rv < c["buy_rsi"]:
+            return "저점 매수 구간! DCA 추가매수 적기"
+        gap = rv - c["buy_rsi"]
+        if gap < 10:
+            return f"매수 구간 접근 중 (RSI {gap:.0f} 남음)"
+        return "B&H 보유 유지 (매수 적기 아님)"
 
     if r["signal"] == "BUY":
         atr_sizing = c.get("atr_sizing")
         if atr_sizing and r.get("atr_val") and r.get("atr_val") > 0:
             pct = min(100, (atr_sizing["risk_pct"] / (r["atr_val"] * atr_sizing["atr_mult"] / r["price"])) * 100)
-            return f"지금 매수 타이밍! (포지션 {pct:.0f}% 권장)"
-        return "지금 매수 타이밍!"
+            return f"지금 매수 타이밍! (포지션 {pct:.0f}% 권장){seasonal_warn}"
+        return f"지금 매수 타이밍!{seasonal_warn}"
     elif r["signal"] == "SELL":
         return "지금 매도 타이밍!"
     elif r["signal"] == "REBUY":
         atr_sizing = c.get("atr_sizing")
         if atr_sizing and r.get("atr_val") and r.get("atr_val") > 0:
             pct = min(100, (atr_sizing["risk_pct"] / (r["atr_val"] * atr_sizing["atr_mult"] / r["price"])) * 100)
-            return f"지금 재매수 타이밍! (포지션 {pct:.0f}% 권장)"
-        return "지금 재매수 타이밍!"
+            return f"지금 재매수 타이밍! (포지션 {pct:.0f}% 권장){seasonal_warn}"
+        return f"지금 재매수 타이밍!{seasonal_warn}"
 
     if state == "CASH":
         gap = rv - c["buy_rsi"]
