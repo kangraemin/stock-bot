@@ -33,16 +33,32 @@ SYMBOLS = {
     "SPXL": {"group": "3x S&P500", "buy_rsi": 30, "sell_rsi": 70, "rebuy_rsi": 55,
              "desc": "S&P500 3배 레버리지"},
     "TNA":  {"group": "3x 소형주", "buy_rsi": 35, "sell_rsi": 70, "rebuy_rsi": 50,
-             "desc": "러셀2000 3배 레버리지"},
+             "desc": "러셀2000 3배 레버리지", "macro_filter": "copper"},
     "QLD":  {"group": "2x 나스닥", "buy_rsi": 25, "sell_rsi": 70, "rebuy_rsi": 55,
              "desc": "나스닥100 2배 레버리지"},
     "UWM":  {"group": "2x 소형주", "buy_rsi": 25, "sell_rsi": 70, "rebuy_rsi": 50,
-             "desc": "러셀2000 2배 레버리지"},
+             "desc": "러셀2000 2배 레버리지", "macro_filter": "copper"},
     "QQQ":  {"group": "나스닥100", "buy_rsi": 25, "sell_rsi": 75, "rebuy_rsi": 55,
              "desc": "나스닥100 인덱스"},
 }
 
 DCA_BOOST_RSI = 45
+COPPER_SMA_PERIOD = 50  # 구리 SMA 기간 (백테스트 최적)
+
+
+def get_copper_trend():
+    """구리(HG=F) SMA50 대비 위치 → 'up' or 'down'"""
+    try:
+        ticker = yf.Ticker("HG=F")
+        df = ticker.history(period="6mo", interval="1d")
+        if len(df) < COPPER_SMA_PERIOD:
+            return None, None, None
+        close = df["Close"].iloc[-1]
+        sma = df["Close"].rolling(COPPER_SMA_PERIOD).mean().iloc[-1]
+        trend = "up" if close > sma else "down"
+        return trend, close, sma
+    except Exception:
+        return None, None, None
 
 
 def send_telegram(msg):
@@ -88,7 +104,7 @@ def save_state(symbol, state):
     f.write_text(json.dumps(state))
 
 
-def check_symbol(symbol, config):
+def check_symbol(symbol, config, copper_trend=None):
     try:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period="3mo", interval="1d")
@@ -113,15 +129,22 @@ def check_symbol(symbol, config):
         sell_rsi = config["sell_rsi"]
         rebuy_rsi = config["rebuy_rsi"]
 
+        # 구리 필터: copper_trend가 "down"이면 매수/재매수 차단
+        has_copper_filter = config.get("macro_filter") == "copper"
+        copper_blocked = has_copper_filter and copper_trend == "down"
+
         signal = None
         new_state = current_state
         reason = ""
 
         if current_state == "CASH":
             if rsi_val < buy_rsi:
-                signal = "BUY"
-                new_state = "HOLDING"
-                reason = f"RSI {rsi_val:.0f} < {buy_rsi} (과매도 진입)"
+                if copper_blocked:
+                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} 매수 조건이지만 구리 하락 중 → 매수 보류"
+                else:
+                    signal = "BUY"
+                    new_state = "HOLDING"
+                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} (과매도 진입)"
         elif current_state == "HOLDING":
             if rsi_val > sell_rsi and price > bb_up:
                 signal = "SELL"
@@ -129,9 +152,12 @@ def check_symbol(symbol, config):
                 reason = f"RSI {rsi_val:.0f} > {sell_rsi} + BB상단(${bb_up:.2f}) 돌파"
         elif current_state == "WAIT_REBUY":
             if rsi_val < rebuy_rsi:
-                signal = "REBUY"
-                new_state = "HOLDING"
-                reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} (과매도 재진입)"
+                if copper_blocked:
+                    reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} 재매수 조건이지만 구리 하락 중 → 재매수 보류"
+                else:
+                    signal = "REBUY"
+                    new_state = "HOLDING"
+                    reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} (과매도 재진입)"
 
         # Proximity warnings
         warnings = []
@@ -169,6 +195,7 @@ def check_symbol(symbol, config):
             "dca_boost": dca_boost,
             "date": date,
             "config": config,
+            "copper_blocked": copper_blocked if has_copper_filter else None,
         }, None
 
     except Exception as e:
@@ -179,8 +206,12 @@ def main():
     results = []
     errors = []
 
+    # 구리 데이터 (TNA 매크로 필터용)
+    copper_trend, copper_price, copper_sma = get_copper_trend()
+
     for symbol, config in SYMBOLS.items():
-        result, error = check_symbol(symbol, config)
+        ct = copper_trend if config.get("macro_filter") == "copper" else None
+        result, error = check_symbol(symbol, config, copper_trend=ct)
         if error:
             errors.append(error)
         if result:
@@ -239,6 +270,14 @@ def main():
             msgs.append(f"⚠️ {e}")
         msgs.append("")
 
+    # ── 매크로 ──
+    if copper_trend:
+        trend_emoji = "📈" if copper_trend == "up" else "📉"
+        msgs.append(f"🔧 매크로: 구리 {trend_emoji} ${copper_price:.2f} (SMA50 ${copper_sma:.2f})")
+        if copper_trend == "down":
+            msgs.append("→ 구리 하락 중: TNA/UWM 매수 보류 권장")
+        msgs.append("")
+
     # ── 용어 설명 ──
     msgs.append("ℹ️ 용어")
     msgs.append("RSI: 과매도(<30)/과매수(>70) 지표")
@@ -253,6 +292,7 @@ def _what_to_do(r):
     rv = r["rsi"]
     state = r["new_state"] if r["signal"] else r["state"]
     c = r["config"]
+    copper_blocked = r.get("copper_blocked")
 
     if r["signal"] == "BUY":
         return "지금 매수 타이밍!"
@@ -263,7 +303,9 @@ def _what_to_do(r):
 
     if state == "CASH":
         gap = rv - c["buy_rsi"]
-        if gap < 10:
+        if copper_blocked and gap < 10:
+            return f"매수 조건 근접 but 구리↓ 매수 보류 (RSI {gap:.0f} 남음)"
+        elif gap < 10:
             return f"매수 대기 중 (RSI {gap:.0f} 더 떨어지면 매수)"
         else:
             return "매수 대기 중 (아직 멀음, 관망)"
@@ -282,7 +324,9 @@ def _what_to_do(r):
 
     elif state == "WAIT_REBUY":
         gap = rv - c["rebuy_rsi"]
-        if gap < 5:
+        if copper_blocked and gap < 5:
+            return f"재매수 조건 근접 but 구리↓ 재매수 보류 (RSI {gap:.0f} 남음)"
+        elif gap < 5:
             return f"재매수 임박! (RSI {gap:.0f} 더 떨어지면 재매수)"
         else:
             return f"재매수 대기 중 (RSI {gap:.0f} 더 떨어져야 함)"
