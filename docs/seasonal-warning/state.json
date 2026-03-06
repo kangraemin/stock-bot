@@ -1,0 +1,22 @@
+{
+  "workflow_phase": "verification",
+  "planning": {
+    "no_question_streak": 0
+  },
+  "plan_approved": true,
+  "team_name": "seasonal-warning",
+  "current_dev_phase": 1,
+  "current_step": 1,
+  "dev_phases": {
+    "1": {
+      "steps": 1,
+      "completed": false
+    }
+  },
+  "verification": {
+    "rounds_passed": 3
+  },
+  "task_dir": "/Users/ram/programming/vibecoding/stock-bot/docs/seasonal-warning",
+  "active_file": "/Users/ram/programming/vibecoding/stock-bot/docs/.active",
+  "persistent_mode": false
+}
