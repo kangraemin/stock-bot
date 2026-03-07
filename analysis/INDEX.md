@@ -12,3 +12,4 @@
 | 2026-03-07 | backtest | OOS 검증: VIX Term + ATR Sizing | [링크](backtest/2026-03-07-oos-validation-vix-atr.md) | VIX term: 4종목 중 3개 FAIL(과적합). ATR sizing: all-in 최적, QLD만 OOS 통과(+27%p). 두 전략 모두 조언용으로만 반영 |
 | 2026-03-07 | backtest | 5가지 추가 실험 + 실전 시뮬 | [링크](backtest/2026-03-07-five-additional-experiments.md) | 89회피+BB결합 시너지없음. 수수료 둔감(거래적음). VIX스케일링 MaxDD개선. 실전시뮬: TNA/UWM만 B&H초과, 강세장서 타이밍전략 열위 |
 | 2026-03-07 | backtest | 7가지 심층 실험 (41종목) | [링크](backtest/2026-03-07-seven-deep-experiments.md) | 오버나이트 수익 90%+. 금리상승기 30/41종목 강세. 트레일링스탑 레버리지불가. 120일보유≈RSI청산. 추가정보는 노이즈, 현행 유지 |
+| 2026-03-07 | backtest | Alert 전략 11개 대안 비교 | [링크](backtest/2026-03-07-alert-strategy-comparison.md) | baseline Sharpe 0.765 최고. 11개 대안 전부 열위. 나스닥 regime_sma200만 shadow 모니터링 가치 |
