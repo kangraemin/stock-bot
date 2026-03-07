@@ -47,6 +47,13 @@ SYMBOLS = {
              "desc": "구글 2배 레버리지", "buy_only": True},
     "NVDA": {"group": "엔비디아", "buy_rsi": 35, "sell_rsi": None, "rebuy_rsi": None,
              "desc": "엔비디아 현물", "buy_only": True},
+    # 코인 관련 종목 (buy_only: DCA 매수 타이밍만 제공)
+    "MSTR": {"group": "비트코인", "buy_rsi": 30, "sell_rsi": None, "rebuy_rsi": None,
+             "desc": "MicroStrategy (비트코인 대리)", "buy_only": True},
+    "HOOD": {"group": "핀테크", "buy_rsi": 30, "sell_rsi": None, "rebuy_rsi": None,
+             "desc": "Robinhood", "buy_only": True},
+    "COIN": {"group": "크립토", "buy_rsi": 30, "sell_rsi": None, "rebuy_rsi": None,
+             "desc": "Coinbase", "buy_only": True},
 }
 
 DCA_BOOST_RSI = 45
@@ -276,6 +283,7 @@ def check_symbol(symbol, config, copper_trend=None):
             "change_pct": change_pct,
             "rsi": rsi_val,
             "bb_upper": bb_up,
+            "bb_lower": bb_low,
             "state": current_state,
             "new_state": new_state,
             "signal": signal,
@@ -412,59 +420,61 @@ def _what_to_do(r):
     # buy_only 종목: 매수 타이밍만 제공
     if c.get("buy_only"):
         if rv < c["buy_rsi"]:
-            return "저점 매수 구간! DCA 추가매수 적기"
+            return f"🟢 저점 매수 구간! RSI {rv:.0f} < {c['buy_rsi']} 과매도 → DCA 추가매수 적기 (가격 ${r['price']:.2f}, BB하단 ${r.get('bb_lower', 0):.2f} 근처)"
         gap = rv - c["buy_rsi"]
         if gap < 10:
-            return f"매수 구간 접근 중 (RSI {gap:.0f} 남음)"
-        return "B&H 보유 유지 (매수 적기 아님)"
+            return f"🟡 중립 — 매수 구간 접근 중 (RSI {rv:.0f}, 목표 {c['buy_rsi']}까지 {gap:.0f} 남음). 추가 하락 시 매수 기회"
+        return f"⚪ 관망 — RSI {rv:.0f}으로 과매도 아님. 보유 중이면 유지, 신규 진입은 RSI {c['buy_rsi']} 이하 대기"
 
     if r["signal"] == "BUY":
         atr_sizing = c.get("atr_sizing")
+        reason = f"RSI {rv:.0f} < {c['buy_rsi']} 과매도 진입"
         if atr_sizing and r.get("atr_val") and r.get("atr_val") > 0:
             pct = min(100, (atr_sizing["risk_pct"] / (r["atr_val"] * atr_sizing["atr_mult"] / r["price"])) * 100)
-            return f"지금 매수 타이밍! (포지션 {pct:.0f}% 권장){seasonal_warn}"
-        return f"지금 매수 타이밍!{seasonal_warn}"
+            return f"🟢 매수! {reason} → 포지션 {pct:.0f}% 권장{seasonal_warn}"
+        return f"🟢 매수! {reason}{seasonal_warn}"
     elif r["signal"] == "SELL":
-        return "지금 매도 타이밍!"
+        return f"🔴 매도! RSI {rv:.0f} > {c['sell_rsi']} + 가격(${r['price']:.2f}) > BB상단(${r['bb_upper']:.2f}) → 과매수 구간 이탈"
     elif r["signal"] == "REBUY":
         atr_sizing = c.get("atr_sizing")
+        reason = f"RSI {rv:.0f} < {c['rebuy_rsi']} 과매도 재진입"
         if atr_sizing and r.get("atr_val") and r.get("atr_val") > 0:
             pct = min(100, (atr_sizing["risk_pct"] / (r["atr_val"] * atr_sizing["atr_mult"] / r["price"])) * 100)
-            return f"지금 재매수 타이밍! (포지션 {pct:.0f}% 권장){seasonal_warn}"
-        return f"지금 재매수 타이밍!{seasonal_warn}"
+            return f"🟢 재매수! {reason} → 포지션 {pct:.0f}% 권장{seasonal_warn}"
+        return f"🟢 재매수! {reason}{seasonal_warn}"
 
     if state == "CASH":
         gap = rv - c["buy_rsi"]
         if copper_blocked and gap < 10:
-            return f"매수 조건 근접 but 구리(경기지표)↓ 소형주 약세 우려 → 매수 보류 (RSI {gap:.0f} 남음)"
+            return f"🟡 보류 — RSI {rv:.0f}, 매수 목표 {c['buy_rsi']}까지 {gap:.0f} 남았지만 구리(경기지표)↓ 소형주 약세 우려"
         elif gap < 10:
-            return f"매수 대기 중 (RSI {gap:.0f} 더 떨어지면 매수)"
+            return f"🟡 중립 — RSI {rv:.0f}, 매수 목표 {c['buy_rsi']}까지 {gap:.0f} 남음. 추가 하락 시 매수"
         else:
-            return "매수 대기 중 (아직 멀음, 관망)"
+            return f"⚪ 관망 — RSI {rv:.0f}으로 과매도 아님 (매수 목표 {c['buy_rsi']}). 현재 진입 불필요"
 
     elif state == "HOLDING":
         sell_gap = c["sell_rsi"] - rv
         bb_close = r["price"] > r["bb_upper"] * 0.97
         if sell_gap < 5 and bb_close:
-            return f"매도 임박! (RSI {sell_gap:.0f} 남음 + BB상단 근접)"
+            return f"🟠 매도 임박! RSI {rv:.0f} → 목표 {c['sell_rsi']}까지 {sell_gap:.0f} + BB상단(${r['bb_upper']:.2f}) 근접"
         elif sell_gap < 5:
-            return f"매도 근접 (RSI {sell_gap:.0f} 남음, BB상단 대기)"
+            return f"🟡 매도 근접 — RSI {rv:.0f}, 목표 {c['sell_rsi']}까지 {sell_gap:.0f}. BB상단(${r['bb_upper']:.2f}) 돌파 대기"
         elif r.get("dca_boost"):
             atr_r = r.get("atr_ratio")
             if atr_r and atr_r > 1.3:
-                return f"보유 유지 + DCA 추가매수 구간 (변동성↑ 소량 추천)"
-            return "보유 유지 + DCA 추가매수 추천 구간"
+                return f"🟢 보유 유지 + DCA 추가매수 구간 (RSI {rv:.0f} < 45, 변동성↑ 소량 추천)"
+            return f"🟢 보유 유지 + DCA 추가매수 추천 (RSI {rv:.0f} < 45)"
         else:
-            return "보유 유지 (매도 조건 아님)"
+            return f"⚪ 보유 유지 — RSI {rv:.0f}, 매도 조건(RSI>{c['sell_rsi']}+BB상단) 아님"
 
     elif state == "WAIT_REBUY":
         gap = rv - c["rebuy_rsi"]
         if copper_blocked and gap < 5:
-            return f"재매수 조건 근접 but 구리(경기지표)↓ 소형주 약세 우려 → 재매수 보류 (RSI {gap:.0f} 남음)"
+            return f"🟡 보류 — RSI {rv:.0f}, 재매수 목표 {c['rebuy_rsi']}까지 {gap:.0f} 남았지만 구리↓ 소형주 약세 우려"
         elif gap < 5:
-            return f"재매수 임박! (RSI {gap:.0f} 더 떨어지면 재매수)"
+            return f"🟡 재매수 임박! RSI {rv:.0f}, 목표 {c['rebuy_rsi']}까지 {gap:.0f} 남음"
         else:
-            return f"재매수 대기 중 (RSI {gap:.0f} 더 떨어져야 함)"
+            return f"⚪ 재매수 대기 — RSI {rv:.0f}, 목표 {c['rebuy_rsi']}까지 {gap:.0f} 더 떨어져야 함"
 
     return "관망"
 
@@ -501,21 +511,31 @@ def _position_advice(r, vix_status):
 
 
 def _rsi_bar(rsi_val):
-    """RSI를 시각적 바로 표현"""
-    if rsi_val < 25:
-        return "▁▁ 극과매도"
-    elif rsi_val < 35:
-        return "▂▂ 과매도"
-    elif rsi_val < 45:
-        return "▃▃ 약세"
-    elif rsi_val < 55:
-        return "▅▅ 중립"
-    elif rsi_val < 65:
-        return "▆▆ 강세"
-    elif rsi_val < 75:
-        return "▇▇ 과매수"
+    """RSI를 5칸 블록 바로 표현 (0~100 → 위치 표시)"""
+    # 5칸: [극과매도|과매도|중립|과매수|극과매수]
+    # RSI 구간: 0-20 | 20-40 | 40-60 | 60-80 | 80-100
+    filled = "🟩"  # 현재 위치
+    empty_low = "🟦"   # 매수 영역 (낮은 RSI)
+    empty_high = "🟥"  # 매도 영역 (높은 RSI)
+    empty = "⬜"       # 빈칸
+
+    if rsi_val < 20:
+        bar = f"{filled}{empty}{empty}{empty}{empty}"
+        label = "극과매도"
+    elif rsi_val < 40:
+        bar = f"{empty_low}{filled}{empty}{empty}{empty}"
+        label = "과매도"
+    elif rsi_val < 60:
+        bar = f"{empty}{empty}{filled}{empty}{empty}"
+        label = "중립"
+    elif rsi_val < 80:
+        bar = f"{empty}{empty}{empty}{filled}{empty_high}"
+        label = "과매수"
     else:
-        return "██ 극과매수"
+        bar = f"{empty}{empty}{empty}{empty}{filled}"
+        label = "극과매수"
+
+    return f"{bar} {label}"
 
 
 if __name__ == "__main__":

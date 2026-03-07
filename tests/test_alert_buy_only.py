@@ -1,4 +1,4 @@
-"""buy_only 모드 (GGLL/NVDA 매수 타이밍 전용) 테스트"""
+"""buy_only 모드 매수 타이밍 전용 테스트"""
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -135,7 +135,7 @@ class TestBuyOnlyWhatToDo:
              "copper_blocked": None, "bb_upper": 100, "price": 80,
              "dca_boost": False, "atr_ratio": 1.0}
         result = alert._what_to_do(r)
-        assert "B&H" in result
+        assert "관망" in result
 
 
 class TestSymbolsConfig:
@@ -158,3 +158,19 @@ class TestSymbolsConfig:
         assert cfg["buy_rsi"] == 35
         assert cfg["sell_rsi"] is None
         assert cfg["rebuy_rsi"] is None
+
+    @pytest.mark.parametrize("symbol,expected_rsi", [
+        ("MSTR", 30), ("HOOD", 30), ("COIN", 30),
+    ])
+    def test_crypto_buy_only_config(self, symbol, expected_rsi):
+        import alert
+        assert symbol in alert.SYMBOLS
+        cfg = alert.SYMBOLS[symbol]
+        assert cfg["buy_only"] is True
+        assert cfg["buy_rsi"] == expected_rsi
+        assert cfg["sell_rsi"] is None
+        assert cfg["rebuy_rsi"] is None
+
+    def test_total_symbols_count(self):
+        import alert
+        assert len(alert.SYMBOLS) == 12
