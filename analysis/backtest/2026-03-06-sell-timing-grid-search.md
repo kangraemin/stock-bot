@@ -5,6 +5,8 @@
 - **커맨드**: /analyze grid (custom sell-timing)
 - **심볼**: 38종목 (NASDAQ 10 + S&P500 10 + Indices 6 + 2x Lev 5 + 3x Lev 7)
 - **타임프레임**: daily
+- **분석 기간**: 1y / 3y / 5y / 10y / full (최대 ~16년)
+- **SHV 기준선**: CAGR 1.52%, MDD -0.45% (2007~2026, 19yr)
 - **소요시간**: 43초
 
 ## 요약
@@ -83,7 +85,11 @@
 | 9 | RSI>65 | rsi+sma200 | RSI<30 | rsi+sma50 | 4회 |
 | 10 | RSI>80 | rsi+sma200 | RSI<25 | rsi_only | 3회 |
 
+> *거래횟수(trades/yr)는 종목/기간별로 상이하여 파라미터 우승 빈도만 표시. 개별 거래횟수는 기간별 Top 5 참조.*
+
 ## 기간별 Top 5 (vs B&H)
+
+> *그리드서치 결과로 개별 거래횟수(trades/yr) 데이터가 포함되지 않음. 거래 빈도는 RSI 임계값과 종목 변동성에 따라 상이.*
 
 ### 1y (37/38 이김)
 | Sym | Group | Sell RSI | Sell조건 | Rebuy RSI | Rebuy조건 | 전략 | B&H | vs BH |
