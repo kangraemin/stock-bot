@@ -34,7 +34,8 @@ SYMBOLS = {
     "SPXL": {"group": "3x S&P500", "buy_rsi": 30, "sell_rsi": 70, "rebuy_rsi": 55,
              "desc": "S&P500 3배 레버리지"},
     "TNA":  {"group": "3x 소형주", "buy_rsi": 35, "sell_rsi": 70, "rebuy_rsi": 50,
-             "desc": "러셀2000 3배 레버리지", "macro_filter": "copper"},
+             "desc": "러셀2000 3배 레버리지", "macro_filter": "copper",
+             "bb_filter": True},
     "QLD":  {"group": "2x 나스닥", "buy_rsi": 25, "sell_rsi": 70, "rebuy_rsi": 55,
              "desc": "나스닥100 2배 레버리지",
              "atr_sizing": {"risk_pct": 0.05, "atr_mult": 1.5}},
@@ -144,6 +145,12 @@ def bollinger_upper(series, period=20, num_std=2):
     return sma + num_std * std
 
 
+def bollinger_lower(series, period=20, num_std=2):
+    sma = series.rolling(period).mean()
+    std = series.rolling(period).std()
+    return sma - num_std * std
+
+
 def load_state(symbol):
     f = STATE_DIR / f"{symbol}.json"
     if f.exists():
@@ -165,12 +172,14 @@ def check_symbol(symbol, config, copper_trend=None):
 
         df["rsi14"] = rsi(df["Close"], 14)
         df["bb_upper"] = bollinger_upper(df["Close"], 20, 2)
+        df["bb_lower"] = bollinger_lower(df["Close"], 20, 2)
 
         latest = df.iloc[-1]
         prev = df.iloc[-2]
         price = latest["Close"]
         rsi_val = latest["rsi14"]
         bb_up = latest["bb_upper"]
+        bb_low = latest["bb_lower"]
         change_pct = (price / prev["Close"] - 1) * 100
         date = df.index[-1].strftime("%Y-%m-%d")
 
@@ -185,6 +194,8 @@ def check_symbol(symbol, config, copper_trend=None):
         has_copper_filter = config.get("macro_filter") == "copper"
         copper_blocked = has_copper_filter and copper_trend == "down"
         is_buy_only = config.get("buy_only", False)
+        has_bb_filter = config.get("bb_filter", False)
+        bb_blocked = has_bb_filter and price >= bb_low
 
         signal = None
         new_state = current_state
@@ -204,10 +215,14 @@ def check_symbol(symbol, config, copper_trend=None):
             if rsi_val < buy_rsi:
                 if copper_blocked:
                     reason = f"RSI {rsi_val:.0f} < {buy_rsi} 매수 조건이지만 구리(경기지표) 하락 → 소형주 약세 우려로 매수 보류"
+                elif bb_blocked:
+                    reason = f"RSI {rsi_val:.0f} < {buy_rsi} 매수 조건이지만 가격(${price:.2f})이 BB하한(${bb_low:.2f}) 위 → 추가 하락 대기"
                 else:
                     signal = "BUY"
                     new_state = "HOLDING"
                     reason = f"RSI {rsi_val:.0f} < {buy_rsi} (과매도 진입)"
+                    if has_bb_filter:
+                        reason += f" + BB하한(${bb_low:.2f}) 하회 확인"
         elif current_state == "HOLDING":
             if rsi_val > sell_rsi and price > bb_up:
                 signal = "SELL"
@@ -217,10 +232,14 @@ def check_symbol(symbol, config, copper_trend=None):
             if rsi_val < rebuy_rsi:
                 if copper_blocked:
                     reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} 재매수 조건이지만 구리(경기지표) 하락 → 소형주 약세 우려로 재매수 보류"
+                elif bb_blocked:
+                    reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} 재매수 조건이지만 가격(${price:.2f})이 BB하한(${bb_low:.2f}) 위 → 추가 하락 대기"
                 else:
                     signal = "REBUY"
                     new_state = "HOLDING"
                     reason = f"RSI {rsi_val:.0f} < {rebuy_rsi} (과매도 재진입)"
+                    if has_bb_filter:
+                        reason += f" + BB하한(${bb_low:.2f}) 하회 확인"
 
         # Proximity warnings
         warnings = []
