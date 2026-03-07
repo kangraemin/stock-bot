@@ -1,0 +1,17 @@
+{
+  "workflow_phase": "development",
+  "planning": {
+    "no_question_streak": 0
+  },
+  "plan_approved": true,
+  "team_name": "",
+  "current_dev_phase": 0,
+  "current_step": 0,
+  "dev_phases": {},
+  "verification": {
+    "rounds_passed": 0
+  },
+  "task_dir": "/Users/ram/programming/vibecoding/stock-bot/docs/exp-portfolio-opt",
+  "active_file": "/Users/ram/programming/vibecoding/stock-bot/docs/.active",
+  "persistent_mode": false
+}
