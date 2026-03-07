@@ -13,3 +13,6 @@
 | 2026-03-07 | backtest | 5가지 추가 실험 + 실전 시뮬 | [링크](backtest/2026-03-07-five-additional-experiments.md) | 89회피+BB결합 시너지없음. 수수료 둔감(거래적음). VIX스케일링 MaxDD개선. 실전시뮬: TNA/UWM만 B&H초과, 강세장서 타이밍전략 열위 |
 | 2026-03-07 | backtest | 7가지 심층 실험 (41종목) | [링크](backtest/2026-03-07-seven-deep-experiments.md) | 오버나이트 수익 90%+. 금리상승기 30/41종목 강세. 트레일링스탑 레버리지불가. 120일보유≈RSI청산. 추가정보는 노이즈, 현행 유지 |
 | 2026-03-07 | backtest | Alert 전략 11개 대안 비교 | [링크](backtest/2026-03-07-alert-strategy-comparison.md) | baseline Sharpe 0.765 최고. 11개 대안 전부 열위. 나스닥 regime_sma200만 shadow 모니터링 가치 |
+| 2026-03-07 | backtest | Alert.py 최적화 + OOS 검증 | [링크](backtest/2026-03-07-alert-optimization-oos.md) | 16,800조합+106 rolling OOS. sell+sma200 승률 24% FAIL. 현행 유지 최적 |
+| 2026-03-07 | backtest | 현행 Alert vs B&H 종합 비교 | [링크](backtest/2026-03-07-alert-bh-comparison.md) | 수익률은 B&H 우세(5/7). 전략 가치는 폭락 방어(MaxDD -89%→-32%). 매수 타이밍만 활용 분석 예정 |
+| 2026-03-07 | backtest | 3인 전문가 팀 백테스트 종합 | [링크](backtest/2026-03-07-expert-team-backtest.md) | 소형주만 RSI 유효(TNA +2364%p). 대형3x는 B&H 압도. TNA BB필터 적용(Bear -21%→+18%). VIX스케일링/시간손절 부정 |
