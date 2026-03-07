@@ -9,3 +9,4 @@ dist/
 build/
 .pytest_cache/
 .grid_cache/
+analysis/data/*.csv
