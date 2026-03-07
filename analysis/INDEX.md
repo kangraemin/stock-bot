@@ -21,3 +21,4 @@
 | 2026-03-07 | backtest | 5가지 그리디 전수 탐색 (743K조합) | [링크](backtest/2026-03-07-greedy-five-experiments.md) | 포트폴리오: NVDA20+GLD80 Sharpe 1.76. DCA: RSI가중 94.8%승률. 듀얼모멘텀/DD매수/리드래그 폐기 |
 | 2026-03-07 | backtest | 에너지x기술 크로스섹터 (398K건) | [링크](backtest/2026-03-07-energy-cross-sector-backtest.md) | DCA Sharpe 3.4(WF100%통과). XOM+NVDA+GLD+BND 4자산 Sharpe 1.87,MDD-20%. 금급등→NVDA 거래11건 통계불충분 |
 | 2026-03-07 | backtest | 전체 899K건 종합 분석 | [링크](backtest/2026-03-07-total-899k-analysis.md) | GLD만능방어(Sharpe+0.3). annual리밸최적. MPC유가급등+1032%p. META\|AVGO\|GLD 유일B&H초과(+46.6%p) |
+| 2026-03-07 | backtest | Cross-Sector All-Weather 포트폴리오 | [링크](backtest/2026-03-07-allweather-backtest.md) | META15/AVGO15/GLD70+MPC유가20% Sharpe1.99,MDD-14.5%. Rolling OOS 83%통과. VIX Cash효과미미 |
