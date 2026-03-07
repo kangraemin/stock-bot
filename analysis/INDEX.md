@@ -17,3 +17,4 @@
 | 2026-03-07 | backtest | 현행 Alert vs B&H 종합 비교 | [링크](backtest/2026-03-07-alert-bh-comparison.md) | 수익률은 B&H 우세(5/7). 전략 가치는 폭락 방어(MaxDD -89%→-32%). 매수 타이밍만 활용 분석 예정 |
 | 2026-03-07 | backtest | 3인 전문가 팀 백테스트 종합 | [링크](backtest/2026-03-07-expert-team-backtest.md) | 소형주만 RSI 유효(TNA +2364%p). 대형3x는 B&H 압도. TNA BB필터 적용(Bear -21%→+18%). VIX스케일링/시간손절 부정 |
 | 2026-03-07 | backtest | 혼합 포트폴리오 OOS 검증 | [링크](backtest/2026-03-07-portfolio-oos-validation.md) | SPXL40+GLD60 band5 OOS +320%(vs B&H +228%). Rolling OOS 90% 승률. MaxDD -41%(vs -77%). 도입 추천 |
+| 2026-03-07 | backtest | 자산배분 188만 조합 3인 전문가 분석 | [링크](backtest/2026-03-07-asset-allocation-grid-188m.md) | 레버리지10%+GLD90%+quarterly가 최적(Sharpe1.44,MDD-18%). 현행alert(MDD-56%)보다 수익↑위험↓. 5년데이터 과적합 경고 |
