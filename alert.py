@@ -301,25 +301,11 @@ def check_symbol(symbol, config, copper_trend=None):
         return None, f"{symbol}: {e}"
 
 
-def main():
-    results = []
-    errors = []
-
-    # 매크로 데이터
-    copper_trend, copper_price, copper_sma = get_copper_trend()
-    vix_status, vix_ratio, vix_val = get_vix_term()
-
-    for symbol, config in SYMBOLS.items():
-        ct = copper_trend if config.get("macro_filter") == "copper" else None
-        result, error = check_symbol(symbol, config, copper_trend=ct)
-        if error:
-            errors.append(error)
-        if result:
-            results.append(result)
-
-    if not results:
-        send_telegram("stock-bot: 모든 종목 데이터 실패")
-        return
+def format_full_report(results, copper_trend, copper_price, copper_sma,
+                       vix_status, vix_ratio, vix_val, errors=None):
+    """전 종목 리포트 문자열 생성 (alert cron + bot /status 공용)"""
+    if errors is None:
+        errors = []
 
     date = results[0]["date"]
     state_kr = {"CASH": "현금 보유", "HOLDING": "주식 보유중", "WAIT_REBUY": "매도 후 재매수 대기"}
@@ -346,7 +332,6 @@ def main():
                 msgs.append("💡 B&H 종목 — 지금 사서 장기 보유 추천")
             else:
                 msgs.append(f"상태: {state_kr[r['state']]} → {state_kr[r['new_state']]}")
-                # 포지션 사이징 조언 (매수/재매수 시)
                 if r["signal"] in ("BUY", "REBUY"):
                     sizing = _position_advice(r, vix_status)
                     if sizing:
@@ -360,13 +345,11 @@ def main():
     for r in results:
         st = state_short[r["new_state"] if r["signal"] else r["state"]]
         rsi_bar = _rsi_bar(r["rsi"])
-        c = r["config"]
 
         msgs.append(f"*{r['symbol']}* - {r['desc']}")
         msgs.append(f"가격: ${r['price']:.2f} ({r['change_pct']:+.1f}%)")
         msgs.append(f"RSI: {r['rsi']:.0f} {rsi_bar}")
 
-        # 지금 뭘 해야 하는지
         action = _what_to_do(r)
         msgs.append(f"→ {action}")
 
@@ -404,8 +387,90 @@ def main():
     msgs.append("VIX Term: 콘탱고=안전, 백워데이션=공포")
     msgs.append("ATR: 변동성 지표 (높으면 포지션 축소)")
 
+    return "\n".join(msgs)
 
-    send_telegram("\n".join(msgs))
+
+def format_single_report(result, copper_trend, copper_price, copper_sma,
+                         vix_status, vix_ratio, vix_val):
+    """단일 종목 상세 리포트 문자열 생성 (bot /status SYMBOL 공용)"""
+    r = result
+    state_kr = {"CASH": "현금 보유", "HOLDING": "주식 보유중", "WAIT_REBUY": "매도 후 재매수 대기"}
+
+    rsi_bar = _rsi_bar(r["rsi"])
+    action = _what_to_do(r)
+
+    msgs = []
+
+    # ── Signal ──
+    if r["signal"]:
+        emoji = {"BUY": "🟢", "SELL": "🔴", "REBUY": "🟢", "BUY_TIMING": "🔵"}
+        sig_action = {"BUY": "매수", "SELL": "매도", "REBUY": "재매수", "BUY_TIMING": "매수 적기"}
+        msgs.append(f"{emoji[r['signal']]} {r['symbol']} {sig_action[r['signal']]} 시그널!")
+        msgs.append(f"종목: {r['desc']}")
+        msgs.append(f"가격: ${r['price']:.2f} ({r['change_pct']:+.1f}%)")
+        msgs.append(f"RSI: {r['rsi']:.0f}")
+        msgs.append(f"사유: {r['reason']}")
+        if r["signal"] == "BUY_TIMING":
+            msgs.append("💡 B&H 종목 — 지금 사서 장기 보유 추천")
+        else:
+            msgs.append(f"상태: {state_kr[r['state']]} → {state_kr[r['new_state']]}")
+            if r["signal"] in ("BUY", "REBUY"):
+                sizing = _position_advice(r, vix_status)
+                if sizing:
+                    msgs.append(f"💡 {sizing}")
+        msgs.append("")
+
+    msgs.append(f"*{r['symbol']}* — {r['desc']}")
+    msgs.append(f"가격: ${r['price']:.2f} ({r['change_pct']:+.1f}%)")
+    msgs.append(f"RSI: {r['rsi']:.0f} {rsi_bar}")
+    msgs.append(f"→ {action}")
+
+    if r.get("warnings"):
+        msgs.append("")
+        for w in r["warnings"]:
+            msgs.append(f"⚠️ {w}")
+
+    # ── 매크로 ──
+    macro_lines = []
+    config = r.get("config", {})
+    if config.get("macro_filter") == "copper" and copper_trend:
+        trend_emoji = "📈" if copper_trend == "up" else "📉"
+        macro_lines.append(f"구리 {trend_emoji} ${copper_price:.2f} (SMA50 ${copper_sma:.2f})")
+    if vix_status:
+        vix_emoji = {"contango": "🟢", "neutral": "🟡", "backwardation": "🔴"}
+        vix_label = {"contango": "콘탱고(정상)", "neutral": "중립", "backwardation": "백워데이션(공포)"}
+        macro_lines.append(f"VIX {vix_emoji[vix_status]} {vix_label[vix_status]} (VIX/VIX3M={vix_ratio}, VIX={vix_val})")
+    if macro_lines:
+        msgs.append("")
+        msgs.append("🔧 매크로")
+        msgs.extend(macro_lines)
+
+    return "\n".join(msgs)
+
+
+def main():
+    results = []
+    errors = []
+
+    # 매크로 데이터
+    copper_trend, copper_price, copper_sma = get_copper_trend()
+    vix_status, vix_ratio, vix_val = get_vix_term()
+
+    for symbol, config in SYMBOLS.items():
+        ct = copper_trend if config.get("macro_filter") == "copper" else None
+        result, error = check_symbol(symbol, config, copper_trend=ct)
+        if error:
+            errors.append(error)
+        if result:
+            results.append(result)
+
+    if not results:
+        send_telegram("stock-bot: 모든 종목 데이터 실패")
+        return
+
+    msg = format_full_report(results, copper_trend, copper_price, copper_sma,
+                             vix_status, vix_ratio, vix_val, errors)
+    send_telegram(msg)
 
 
 def _what_to_do(r):
