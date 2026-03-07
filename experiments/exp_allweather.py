@@ -29,7 +29,9 @@ FEE_RATE = 0.0025
 IS_RATIO = 0.70
 
 # ── Symbols ──
-CORE_SYMBOLS = ["NVDA", "XOM", "META", "AVGO", "GLD", "BND"]
+# 장기 데이터 우선: 2007~2026 (18.9yr), 2008 금융위기 포함
+CORE_SYMBOLS = ["NVDA", "XOM", "CVX", "COP", "XLE", "AAPL", "MSFT", "GOOGL", "AMZN",
+                "GLD", "BND", "TLT", "SPY", "QQQ"]
 SATELLITE_SYMBOLS = ["MPC", "PSX", "TNA"]
 MACRO_SYMBOLS = ["CL=F", "^VIX"]
 BENCH_SYMBOLS = ["SPY"]
@@ -40,22 +42,72 @@ ALL_SYMBOLS = list(set(
 ))
 
 # ── Phase 1: Core Portfolio Configs ──
+# 모든 변형이 2007~2026 (18.9yr) 이상 커버
 CORE_VARIANTS = {
-    "core_tech_gold": {
-        "symbols": ["NVDA", "GLD"],
-        "weights": (0.20, 0.80),
-    },
-    "core_balanced": {
-        "symbols": ["NVDA", "AVGO", "GLD", "BND"],
-        "weights": (0.15, 0.15, 0.40, 0.30),
-    },
-    "core_energy_tech": {
+    # 기존 최적 (에너지 실험)
+    "energy_tech_4a": {
         "symbols": ["XOM", "NVDA", "GLD", "BND"],
         "weights": (0.20, 0.20, 0.40, 0.20),
     },
-    "core_meta_avgo": {
-        "symbols": ["META", "AVGO", "GLD"],
-        "weights": (0.15, 0.15, 0.70),
+    # 에너지 변형
+    "cvx_nvda_gld_bnd": {
+        "symbols": ["CVX", "NVDA", "GLD", "BND"],
+        "weights": (0.20, 0.20, 0.40, 0.20),
+    },
+    "cop_nvda_gld_bnd": {
+        "symbols": ["COP", "NVDA", "GLD", "BND"],
+        "weights": (0.20, 0.20, 0.40, 0.20),
+    },
+    # 테크 듀오
+    "aapl_msft_gld_bnd": {
+        "symbols": ["AAPL", "MSFT", "GLD", "BND"],
+        "weights": (0.15, 0.15, 0.40, 0.30),
+    },
+    "nvda_aapl_gld_bnd": {
+        "symbols": ["NVDA", "AAPL", "GLD", "BND"],
+        "weights": (0.15, 0.15, 0.40, 0.30),
+    },
+    # 전통 올웨더 변형
+    "spy_tlt_gld": {
+        "symbols": ["SPY", "TLT", "GLD"],
+        "weights": (0.30, 0.40, 0.30),
+    },
+    "qqq_tlt_gld": {
+        "symbols": ["QQQ", "TLT", "GLD"],
+        "weights": (0.30, 0.40, 0.30),
+    },
+    # NVDA+GLD 2자산 (21.3yr)
+    "nvda_gld": {
+        "symbols": ["NVDA", "GLD"],
+        "weights": (0.20, 0.80),
+    },
+    # 구글/아마존 변형
+    "googl_gld_bnd": {
+        "symbols": ["GOOGL", "GLD", "BND"],
+        "weights": (0.20, 0.40, 0.40),
+    },
+    "amzn_gld_bnd": {
+        "symbols": ["AMZN", "GLD", "BND"],
+        "weights": (0.20, 0.40, 0.40),
+    },
+    # 크로스섹터: 에너지+테크+방어
+    "xom_aapl_gld_bnd": {
+        "symbols": ["XOM", "AAPL", "GLD", "BND"],
+        "weights": (0.15, 0.15, 0.40, 0.30),
+    },
+    # 다양한 GLD 비중 테스트
+    "nvda_gld_bnd_g60": {
+        "symbols": ["NVDA", "GLD", "BND"],
+        "weights": (0.20, 0.60, 0.20),
+    },
+    "nvda_gld_bnd_g40": {
+        "symbols": ["NVDA", "GLD", "BND"],
+        "weights": (0.30, 0.40, 0.30),
+    },
+    # 레이 달리오 스타일
+    "spy_tlt_gld_bnd": {
+        "symbols": ["SPY", "TLT", "GLD", "BND"],
+        "weights": (0.30, 0.40, 0.15, 0.15),
     },
 }
 
